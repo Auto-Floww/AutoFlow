@@ -9,18 +9,7 @@
   const views = document.querySelectorAll(".view");
   if (!views.length) return;
 
-  const protectedViews = new Set([
-    "dashboard",
-    "conversas",
-    "agendamentos",
-    "relatorios",
-    "configuracoes",
-  ]);
-  const authState = {
-    checked: false,
-    user: null,
-  };
-  const rememberStorageKey = "autoflow_remember_login";
+  const defaultView = document.body.dataset.defaultView || "home";
 
   const showView = (name) => {
     let found = false;
@@ -31,79 +20,24 @@
     });
     if (!found) {
       views.forEach((view) => {
-        view.hidden = view.id !== "view-home";
+        view.hidden = view.id !== `view-${defaultView}`;
       });
     }
     window.scrollTo(0, 0);
   };
 
-  const checkSession = async () => {
-    if (authState.checked) return authState.user;
-
-    try {
-      const response = await fetch("/api/me", {
-        credentials: "same-origin",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        authState.user = data.user;
-      }
-    } catch (error) {
-      authState.user = null;
-    }
-
-    authState.checked = true;
-    return authState.user;
-  };
-
-  const route = async () => {
+  const route = () => {
     const hash = window.location.hash;
     if (!hash.startsWith("#/")) {
-      if (hash === "" || hash === "#") showView("home");
+      if (hash === "" || hash === "#") showView(defaultView);
       return; // plain in-page anchor (#contato, #demo…) — let the browser handle it
     }
-    const name = hash.slice(2) || "home";
-
-    if (name === "login") {
-      const user = await checkSession();
-      if (user) {
-        window.location.hash = "/dashboard";
-        showView("dashboard");
-        return;
-      }
-    }
-
-    if (protectedViews.has(name)) {
-      const user = await checkSession();
-      if (!user) {
-        showView("login");
-        if (window.location.hash !== "#/login") {
-          window.location.hash = "/login";
-        }
-        return;
-      }
-    }
-
+    const name = hash.slice(2) || defaultView;
     showView(name);
   };
 
   window.addEventListener("hashchange", route);
   route();
-
-  // expose for other scripts (e.g. login redirect) without extra globals
-  window.__autoflowNavigate = (name) => {
-    window.location.hash = `/${name}`;
-  };
-  window.__autoflowSetUser = (user) => {
-    authState.user = user;
-    authState.checked = true;
-  };
-  window.__autoflowClearUser = () => {
-    authState.user = null;
-    authState.checked = true;
-  };
-  window.__autoflowRememberStorageKey = rememberStorageKey;
 })();
 
 // ============================================
@@ -177,7 +111,7 @@
 })();
 
 // ============================================
-// Login page
+// Login page (front-end only, no backend)
 // ============================================
 (function () {
   const form = document.getElementById("loginForm");
@@ -196,90 +130,16 @@
 
   const fields = document.getElementById("loginFields");
   const loading = document.getElementById("loginLoading");
-  const message = document.getElementById("loginMessage");
-  const submitButton = form.querySelector(".auth-submit");
-  const rememberInput = document.getElementById("lembrarInput");
 
-  if (rememberInput) {
-    rememberInput.checked =
-      window.localStorage.getItem(window.__autoflowRememberStorageKey) === "1";
-  }
-
-  const setMessage = (text) => {
-    if (!message) return;
-    message.textContent = text;
-    message.hidden = !text;
-  };
-
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    setMessage("");
     fields.hidden = true;
     loading.hidden = false;
-    if (submitButton) submitButton.disabled = true;
 
-    const formData = new FormData(form);
-    const keepConnected = Boolean(formData.get("lembrar"));
-
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          email: formData.get("email"),
-          senha: formData.get("senha"),
-          lembrar: keepConnected,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.message || "Nao foi possivel entrar.");
-      }
-
-      window.__autoflowSetUser(data.user);
-      if (keepConnected) {
-        window.localStorage.setItem(window.__autoflowRememberStorageKey, "1");
-      } else {
-        window.localStorage.removeItem(window.__autoflowRememberStorageKey);
-      }
-      window.__autoflowNavigate("dashboard");
-    } catch (error) {
-      fields.hidden = false;
-      loading.hidden = true;
-      setMessage(error.message || "Nao foi possivel entrar.");
-      if (senhaInput) senhaInput.focus();
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
-  });
-})();
-
-// ============================================
-// Logout
-// ============================================
-(function () {
-  document.querySelectorAll(".dash-logout").forEach((logoutLink) => {
-    logoutLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-
-      try {
-        await fetch("/api/logout", {
-          method: "POST",
-          credentials: "same-origin",
-        });
-      } catch (error) {
-        // Local state is cleared either way so the user leaves the panel.
-      }
-
-      window.__autoflowClearUser();
-      window.localStorage.removeItem(window.__autoflowRememberStorageKey);
-      window.__autoflowNavigate("login");
-    });
+    // simulação de autenticação — sem backend real ainda
+    setTimeout(() => {
+      window.location.href = "dashboard.html";
+    }, 1200);
   });
 })();
 

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — AutoFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="topbar-logo">Auto<span class="accent-text">Flow</span></a>
+</header>
+
+<main class="auth-shell">
+  <div class="auth-glow" aria-hidden="true"></div>
+
+  <div class="auth-card">
+    <span class="eyebrow">Acesso ao painel</span>
+    <h1>Bem-vindo de volta.</h1>
+    <p class="auth-sub">Entre para acompanhar os atendimentos automáticos da sua empresa.</p>
+
+    <form id="loginForm" class="auth-form">
+      <div id="loginFields">
+        <label>E-mail
+          <input type="email" name="email" placeholder="voce@empresa.com" required>
+        </label>
+
+        <label>Senha
+          <div class="password-field">
+            <input type="password" name="senha" id="senhaInput" placeholder="••••••••" required>
+            <button type="button" id="togglePassword" class="password-toggle" aria-label="Mostrar senha">ver</button>
+          </div>
+        </label>
+
+        <div class="auth-row">
+          <label class="checkbox">
+            <input type="checkbox" name="lembrar">
+            <span>Lembrar de mim</span>
+          </label>
+          <a href="#" class="auth-link">Esqueceu a senha?</a>
+        </div>
+
+        <button type="submit" class="auth-submit">Entrar</button>
+      </div>
+
+      <div id="loginLoading" class="auth-loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Entrando na sua conta…</p>
+      </div>
+    </form>
+
+    <p class="auth-footer-text">Não tem conta ainda? <a href="index.html" class="auth-link">Fale com o time</a></p>
+  </div>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
