@@ -87,11 +87,13 @@ section{ padding: 7rem 6vw; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-decoration: none;
-  color: var(--muted);
-  padding: 0.55rem 0.9rem;
-  transition: color 0.2s ease;
+  border: 1px solid var(--line);
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  pointer-events: auto;
+  transition: border-color 0.2s ease, color 0.2s ease;
 }
-.topbar-login:hover{ color: var(--paper); }
+.topbar-login:hover{ border-color: var(--accent); color: var(--accent); }
 
 .topbar-cta{
   font-family: var(--font-mono);
@@ -599,6 +601,7 @@ section{ padding: 7rem 6vw; }
 }
 
 .auth-form input[type="email"],
+.auth-form input[type="text"],
 .auth-form input[type="password"]{
   width:100%;
   margin-top: 0.4rem;
@@ -672,6 +675,17 @@ section{ padding: 7rem 6vw; }
   transition: filter 0.2s ease;
 }
 .auth-submit:hover{ filter: brightness(1.08); }
+.auth-submit:disabled{
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.auth-message{
+  margin-top: 1rem;
+  color: #E0575A;
+  font-size: 0.86rem;
+  text-align: center;
+}
 
 .auth-loading{
   display:flex;
@@ -1365,4 +1379,3 @@ section{ padding: 7rem 6vw; }
 @media (max-width: 860px){
   .settings-grid{ grid-template-columns: 1fr; }
 }
-
