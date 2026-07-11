@@ -9,18 +9,7 @@
   const views = document.querySelectorAll(".view");
   if (!views.length) return;
 
-  const protectedViews = new Set([
-    "dashboard",
-    "conversas",
-    "agendamentos",
-    "relatorios",
-    "configuracoes",
-  ]);
-  const authState = {
-    checked: false,
-    user: null,
-  };
-  const rememberStorageKey = "autoflow_remember_login";
+  const defaultView = document.body.dataset.defaultView || "home";
 
   const showView = (name) => {
     let found = false;
@@ -31,132 +20,24 @@
     });
     if (!found) {
       views.forEach((view) => {
-        view.hidden = view.id !== "view-home";
+        view.hidden = view.id !== `view-${defaultView}`;
       });
     }
     window.scrollTo(0, 0);
   };
 
-  const checkSession = async () => {
-    if (authState.checked) return authState.user;
-
-    try {
-      const response = await fetch("/api/me", {
-        credentials: "same-origin",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        authState.user = data.user;
-      }
-    } catch (error) {
-      authState.user = null;
-    }
-
-    authState.checked = true;
-    return authState.user;
-  };
-
-  const route = async () => {
+  const route = () => {
     const hash = window.location.hash;
     if (!hash.startsWith("#/")) {
-      if (hash === "" || hash === "#") showView("home");
+      if (hash === "" || hash === "#") showView(defaultView);
       return; // plain in-page anchor (#contato, #demo…) — let the browser handle it
     }
-    const name = hash.slice(2) || "home";
-
-    if (name === "login") {
-      const user = await checkSession();
-      if (user) {
-        window.location.hash = "/dashboard";
-        showView("dashboard");
-        return;
-      }
-    }
-
-    if (protectedViews.has(name)) {
-      const user = await checkSession();
-      if (!user) {
-        showView("login");
-        if (window.location.hash !== "#/login") {
-          window.location.hash = "/login";
-        }
-        return;
-      }
-    }
-
+    const name = hash.slice(2) || defaultView;
     showView(name);
   };
 
   window.addEventListener("hashchange", route);
   route();
-
-  // expose for other scripts (e.g. login redirect) without extra globals
-  window.__autoflowNavigate = (name) => {
-    window.location.hash = `/${name}`;
-  };
-  window.__autoflowSetUser = (user) => {
-    authState.user = user;
-    authState.checked = true;
-  };
-  window.__autoflowClearUser = () => {
-    authState.user = null;
-    authState.checked = true;
-  };
-  window.__autoflowRememberStorageKey = rememberStorageKey;
-})();
-
-// ============================================
-// Scroll-triggered WhatsApp demo
-// Each "track-step" acts as an invisible cue.
-// When it crosses the center of the viewport,
-// the matching chat bubble fades/slides in and
-// the phone auto-scrolls to reveal it.
-// ============================================
-(function () {
-  const chatBody = document.getElementById("chatBody");
-  const statusEl = document.getElementById("chatStatus");
-  const steps = document.querySelectorAll(".track-step");
-
-  if (!steps.length) return;
-
-  const revealMessage = (index) => {
-    const msg = chatBody.querySelector(`.chat-msg[data-index="${index}"]`);
-    if (!msg || msg.classList.contains("visible")) return;
-
-    msg.classList.add("visible");
-
-    // little "digitando..." beat before a bot reply lands
-    if (msg.classList.contains("out") && statusEl) {
-      statusEl.textContent = "digitando…";
-      setTimeout(() => {
-        statusEl.textContent = "online";
-      }, 500);
-    }
-
-    chatBody.scrollTo({
-      top: chatBody.scrollHeight,
-      behavior: "smooth",
-    });
-  };
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          revealMessage(entry.target.dataset.target);
-        }
-      });
-    },
-    {
-      root: null,
-      // trigger when a step crosses the vertical center of the screen
-      rootMargin: "-45% 0px -45% 0px",
-      threshold: 0,
-    }
-  );
-
-  steps.forEach((step) => observer.observe(step));
 })();
 
 // ============================================
@@ -177,108 +58,223 @@
 })();
 
 // ============================================
-// Login page
+// Auth pages: login and account creation
 // ============================================
 (function () {
-  const form = document.getElementById("loginForm");
-  if (!form) return;
+  const loginForm = document.getElementById("loginForm");
+  const registerForm = document.getElementById("registerForm");
+  if (!loginForm || !registerForm) return;
 
-  const senhaInput = document.getElementById("senhaInput");
-  const toggleBtn = document.getElementById("togglePassword");
+  const authTitle = document.getElementById("authTitle");
+  const authSub = document.getElementById("authSub");
+  const authMessage = document.getElementById("authMessage");
+  const authFooterText = document.getElementById("authFooterText");
+  const tabs = document.querySelectorAll("[data-auth-mode]");
 
-  if (toggleBtn && senhaInput) {
-    toggleBtn.addEventListener("click", () => {
-      const isPassword = senhaInput.type === "password";
-      senhaInput.type = isPassword ? "text" : "password";
-      toggleBtn.textContent = isPassword ? "ocultar" : "ver";
-    });
-  }
-
-  const fields = document.getElementById("loginFields");
-  const loading = document.getElementById("loginLoading");
-  const message = document.getElementById("loginMessage");
-  const submitButton = form.querySelector(".auth-submit");
-  const rememberInput = document.getElementById("lembrarInput");
-
-  if (rememberInput) {
-    rememberInput.checked =
-      window.localStorage.getItem(window.__autoflowRememberStorageKey) === "1";
-  }
-
-  const setMessage = (text) => {
-    if (!message) return;
-    message.textContent = text;
-    message.hidden = !text;
+  const copy = {
+    login: {
+      title: "Bem-vindo de volta.",
+      sub: "Entre para acompanhar os atendimentos automáticos da sua empresa.",
+      footer: 'Não tem conta ainda? <a href="#" class="auth-link" data-auth-mode="register">Criar conta</a>',
+      showcaseLabel: "Atendimento inteligente no WhatsApp",
+      showcaseTitle: "Seu atendimento continua. Suas vendas também.",
+      showcaseSub: "O AutoFlow responde, consulta os dados da empresa e conduz cada cliente para o próximo passo.",
+    },
+    register: {
+      title: "Criar conta.",
+      sub: "Cadastre sua empresa para acessar o painel do AutoFlow.",
+      footer: 'Já tem conta? <a href="#" class="auth-link" data-auth-mode="login">Entrar</a>',
+      showcaseLabel: "Comece com o AutoFlow",
+      showcaseTitle: "Prepare sua empresa para atender melhor.",
+      showcaseSub: "Crie sua conta, cadastre as informações da operação e deixe a IA pronta para conversar com seus clientes.",
+    },
   };
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setMessage("");
-    fields.hidden = true;
-    loading.hidden = false;
-    if (submitButton) submitButton.disabled = true;
+  const authShowcaseLabel = document.getElementById("authShowcaseLabel");
+  const authShowcaseTitle = document.getElementById("authShowcaseTitle");
+  const authShowcaseSub = document.getElementById("authShowcaseSub");
 
-    const formData = new FormData(form);
-    const keepConnected = Boolean(formData.get("lembrar"));
+  const showMessage = (message, type = "error") => {
+    authMessage.textContent = message;
+    authMessage.classList.toggle("success", type === "success");
+    authMessage.hidden = false;
+  };
+
+  const clearMessage = () => {
+    authMessage.textContent = "";
+    authMessage.classList.remove("success");
+    authMessage.hidden = true;
+  };
+
+  const setMode = (mode) => {
+    const isRegister = mode === "register";
+    document.body.classList.toggle("auth-register-mode", isRegister);
+    loginForm.hidden = isRegister;
+    registerForm.hidden = !isRegister;
+    authTitle.textContent = copy[mode].title;
+    authSub.textContent = copy[mode].sub;
+    authFooterText.innerHTML = copy[mode].footer;
+    if (authShowcaseLabel) authShowcaseLabel.textContent = copy[mode].showcaseLabel;
+    if (authShowcaseTitle) authShowcaseTitle.textContent = copy[mode].showcaseTitle;
+    if (authShowcaseSub) authShowcaseSub.textContent = copy[mode].showcaseSub;
+    tabs.forEach((tab) => {
+      tab.classList.toggle("active", tab.dataset.authMode === mode);
+    });
+    clearMessage();
+  };
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-auth-mode]");
+    if (!trigger) return;
+    event.preventDefault();
+    setMode(trigger.dataset.authMode);
+  });
+
+  const bindPasswordToggle = (buttonId, inputId) => {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    if (!button || !input) return;
+
+    button.addEventListener("click", () => {
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      button.classList.toggle("is-visible", isPassword);
+    });
+  };
+
+  const requestJson = async (url, payload) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || "Não foi possível completar a operação.");
+    }
+
+    return data;
+  };
+
+  const setSubmitting = (form, submitting) => {
+    const submit = form.querySelector(".auth-submit");
+    if (!submit) return;
+
+    if (!submit.dataset.label) {
+      submit.dataset.label = submit.textContent;
+    }
+
+    submit.disabled = submitting;
+    submit.textContent = submitting ? "Aguarde..." : submit.dataset.label;
+  };
+
+  bindPasswordToggle("togglePassword", "senhaInput");
+  bindPasswordToggle("toggleRegisterPassword", "registerSenhaInput");
+  bindPasswordToggle("toggleConfirmarPassword", "confirmarSenhaInput");
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearMessage();
+    setSubmitting(loginForm, true);
+
+    const formData = new FormData(loginForm);
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          email: formData.get("email"),
-          senha: formData.get("senha"),
-          lembrar: keepConnected,
-        }),
+      await requestJson("/api/login", {
+        email: formData.get("email"),
+        senha: formData.get("senha"),
+        lembrar: formData.get("lembrar") === "on",
       });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.message || "Nao foi possivel entrar.");
-      }
-
-      window.__autoflowSetUser(data.user);
-      if (keepConnected) {
-        window.localStorage.setItem(window.__autoflowRememberStorageKey, "1");
-      } else {
-        window.localStorage.removeItem(window.__autoflowRememberStorageKey);
-      }
-      window.__autoflowNavigate("dashboard");
+      window.location.href = "dashboard.html";
     } catch (error) {
-      fields.hidden = false;
-      loading.hidden = true;
-      setMessage(error.message || "Nao foi possivel entrar.");
-      if (senhaInput) senhaInput.focus();
+      showMessage(error.message);
     } finally {
-      if (submitButton) submitButton.disabled = false;
+      setSubmitting(loginForm, false);
+    }
+  });
+
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearMessage();
+
+    const formData = new FormData(registerForm);
+    const senha = String(formData.get("senha") || "");
+    const confirmarSenha = String(formData.get("confirmarSenha") || "");
+
+    if (senha !== confirmarSenha) {
+      showMessage("As senhas precisam ser iguais.");
+      return;
+    }
+
+    setSubmitting(registerForm, true);
+
+    try {
+      await requestJson("/api/register", {
+        nome: formData.get("nome"),
+        empresa: formData.get("empresa"),
+        email: formData.get("email"),
+        senha,
+      });
+      window.location.href = "dashboard.html";
+    } catch (error) {
+      showMessage(error.message);
+    } finally {
+      setSubmitting(registerForm, false);
     }
   });
 })();
 
 // ============================================
-// Logout
+// Dashboard session guard and logout
 // ============================================
 (function () {
-  document.querySelectorAll(".dash-logout").forEach((logoutLink) => {
-    logoutLink.addEventListener("click", async (e) => {
-      e.preventDefault();
+  if (!document.body.dataset.defaultView) return;
+
+  const initialsFromName = (name) =>
+    String(name || "AF")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+
+  const applyUser = (user) => {
+    const displayName = user.empresa || user.nome || "AutoFlow";
+    document.querySelectorAll(".dash-avatar").forEach((avatar) => {
+      avatar.textContent = initialsFromName(displayName);
+    });
+
+    const firstTitle = document.querySelector("#view-dashboard .dash-topbar h1");
+    if (firstTitle) {
+      firstTitle.textContent = `Olá, ${displayName}`;
+    }
+  };
+
+  fetch("/api/me", { credentials: "same-origin" })
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "Sessão expirada.");
+      applyUser(data.user);
+    })
+    .catch(() => {
+      window.location.href = "login.html";
+    });
+
+  document.querySelectorAll(".dash-logout").forEach((link) => {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
 
       try {
         await fetch("/api/logout", {
           method: "POST",
           credentials: "same-origin",
         });
-      } catch (error) {
-        // Local state is cleared either way so the user leaves the panel.
+      } finally {
+        window.location.href = "login.html";
       }
-
-      window.__autoflowClearUser();
-      window.localStorage.removeItem(window.__autoflowRememberStorageKey);
-      window.__autoflowNavigate("login");
     });
   });
 })();
