@@ -12,11 +12,27 @@
       "dest": "server.js"
     },
     {
-      "src": "/dashboard.html",
+      "src": "/js/(.*)",
+      "dest": "/js/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/style\\.css",
+      "dest": "/style.css"
+    },
+    {
+      "src": "/script\\.js",
+      "dest": "/script.js"
+    },
+    {
+      "src": "/dashboard\\.html",
       "dest": "server.js"
     },
     {
-      "src": "/login.html",
+      "src": "/login\\.html",
       "dest": "server.js"
     },
     {
