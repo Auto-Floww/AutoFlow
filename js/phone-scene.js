@@ -7,6 +7,7 @@ const canvas = document.getElementById("phoneCanvas");
 const visual = document.getElementById("phoneVisual");
 const overlay = document.getElementById("phoneScreenOverlay");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const mobileViewport = window.matchMedia("(max-width: 860px)");
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 100);
@@ -61,6 +62,22 @@ scene.environment = envMap;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const getPhoneRotation = (progress) => {
+  const mobile = mobileViewport.matches;
+  const initialRotation = mobile ? -0.52 : -0.3;
+  let extraRotation = 0;
+
+  // The full showcase spin is intentionally desktop-only. On narrow screens,
+  // a restrained three-quarter turn remains readable during short scrolls.
+  if (!mobile && progress < 0.4) {
+    const t = progress / 0.4;
+    const ease = t * t * (3 - 2 * t);
+    extraRotation = (1 - ease) * Math.PI * 2;
+  }
+
+  return THREE.MathUtils.lerp(initialRotation, 0, progress) - extraRotation;
+};
+
 const resize = () => {
   if (!visual) return;
   const width = Math.max(1, visual.clientWidth);
@@ -75,17 +92,11 @@ const resize = () => {
 
 const renderFrame = () => {
   const delta = Math.min(clock.getDelta(), 0.05);
-  const damping = 1 - Math.exp(-delta * 7.5);
+  const dampingRate = mobileViewport.matches ? 3.8 : 7.5;
+  const damping = 1 - Math.exp(-delta * dampingRate);
   currentProgress = THREE.MathUtils.lerp(currentProgress, targetProgress, damping);
-  
-  let extraRotation = 0;
-  if (currentProgress < 0.4) {
-    const t = currentProgress / 0.4;
-    const ease = t * t * (3 - 2 * t);
-    extraRotation = (1 - ease) * Math.PI * 2;
-  }
-  
-  const rotation = THREE.MathUtils.lerp(-0.3, 0, currentProgress) - extraRotation;
+
+  const rotation = getPhoneRotation(currentProgress);
   const cameraZ = THREE.MathUtils.lerp(8.6, 8.38, currentProgress);
   const floatOffset = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.35) * 0.038 * (1 - currentProgress * 0.7);
 
@@ -155,7 +166,7 @@ const mountModel = (gltf) => {
   });
 
   phoneRoot.add(model);
-  phoneRoot.rotation.y = targetProgress === 1 ? 0 : -0.3;
+  phoneRoot.rotation.y = getPhoneRotation(targetProgress);
   isReady = true;
   resize();
   if (!isRunning) renderer.render(scene, camera);

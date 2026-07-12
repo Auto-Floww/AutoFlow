@@ -14,7 +14,9 @@
 }
 </script>
 </head>
-<body>
+<body class="intro-pending">
+
+<canvas id="intro-canvas" aria-hidden="true"></canvas>
 
 <header class="topbar landing-topbar">
   <a href="index.html" class="topbar-logo" aria-label="AutoFlow">
@@ -364,6 +366,16 @@
 </footer>
 
 <script src="script.js"></script>
+<script type="module" src="js/intro-scene.js"></script>
 <script type="module" src="js/phone-scroll.js"></script>
+<script>
+  window.setTimeout(function () {
+    if (!window.__autoflowIntroDone) {
+      document.body.classList.remove('intro-pending');
+      var introCanvas = document.getElementById('intro-canvas');
+      if (introCanvas) introCanvas.remove();
+    }
+  }, 4500);
+</script>
 </body>
 </html>
