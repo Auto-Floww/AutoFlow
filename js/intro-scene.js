@@ -124,6 +124,40 @@ import * as THREE from "three";
     return texture;
   }
 
+  function makeBrandTexture() {
+    const textureCanvas = document.createElement("canvas");
+    textureCanvas.width = 2048;
+    textureCanvas.height = 1280;
+    const ctx = textureCanvas.getContext("2d");
+    const brandY = 580;
+
+    ctx.clearRect(0, 0, textureCanvas.width, textureCanvas.height);
+    ctx.font = '600 224px "Space Grotesk", sans-serif';
+    ctx.textBaseline = "middle";
+    const autoWidth = ctx.measureText("Auto").width;
+    const flowWidth = ctx.measureText("Flow").width;
+    const brandX = (textureCanvas.width - autoWidth - flowWidth) / 2;
+
+    ctx.fillStyle = "#F5F5F7";
+    ctx.fillText("Auto", brandX, brandY);
+    ctx.fillStyle = COLORS.accent;
+    ctx.fillText("Flow", brandX + autoWidth, brandY);
+
+    ctx.globalAlpha = 0.92;
+    ctx.font = '500 68px "IBM Plex Sans", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#F5F5F7";
+    ctx.fillText("IA para vendas e atendimento", textureCanvas.width / 2, brandY + 200);
+
+    const texture = new THREE.CanvasTexture(textureCanvas);
+    if ("colorSpace" in texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+    } else {
+      texture.encoding = THREE.sRGBEncoding;
+    }
+    return texture;
+  }
+
   function makeReflectionTexture() {
     const textureCanvas = document.createElement("canvas");
     textureCanvas.width = 256;
@@ -279,6 +313,26 @@ import * as THREE from "three";
   screenMesh.position.set(0, 0.75, 0.044);
   lidPivot.add(screenMesh);
 
+  const brandTexture = makeBrandTexture();
+  brandTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  brandTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  brandTexture.magFilter = THREE.LinearFilter;
+  brandTexture.generateMipmaps = true;
+
+  const brandMat = new THREE.MeshBasicMaterial({
+    map: brandTexture,
+    transparent: true,
+    opacity: 0,
+    alphaTest: 0.01,
+    depthWrite: false,
+    toneMapped: false,
+    side: THREE.DoubleSide
+  });
+  const brandMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.04, 1.29), brandMat);
+  brandMesh.position.set(0, 0.75, 0.05);
+  brandMesh.renderOrder = 3;
+  lidPivot.add(brandMesh);
+
   const reflectionMat = new THREE.MeshBasicMaterial({
     map: makeReflectionTexture(),
     transparent: true,
@@ -322,11 +376,18 @@ import * as THREE from "three";
       const openEase = easeOutCubic(openProgress);
       lidPivot.rotation.x = lerp(CLOSED_ROT, OPEN_ROT, openEase);
       screenMat.emissiveIntensity = lerp(0, 1.05, openEase);
+      brandMat.opacity = openEase;
       reflectionMat.opacity = lerp(0, 0.34, openEase);
     }
 
     if (t > TIMING.openStart + TIMING.openDuration && t < TIMING.zoomStart + 200) {
       screenMat.emissiveIntensity = 1.05 + Math.sin(t / 220) * 0.12;
+    }
+
+    const brandFadeStart = TIMING.zoomStart - 200;
+    if (t >= brandFadeStart) {
+      const brandFadeProgress = Math.min(1, (t - brandFadeStart) / 2200);
+      brandMat.opacity = 1 - easeInOutCubic(brandFadeProgress);
     }
 
     if (t >= TIMING.zoomStart) {
