@@ -1,0 +1,4 @@
+{% extends "errors/base_error.html" %}
+{% block title %}Solicitação inválida{% endblock %}{% block icon %}file-warning{% endblock %}{% block eyebrow %}Solicitação inválida{% endblock %}
+{% block heading %}Não foi possível processar.{% endblock %}{% block message %}{{ message|default('Revise as informações enviadas e tente novamente.') }}{% endblock %}
+{% block actions %}<button class="button button-primary" type="button" data-history-back><i data-lucide="arrow-left"></i>Revisar dados</button><a class="button button-secondary" href="/dashboard"><i data-lucide="layout-dashboard"></i>Ir para o dashboard</a>{% endblock %}

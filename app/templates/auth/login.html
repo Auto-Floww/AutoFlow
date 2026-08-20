@@ -1,0 +1,23 @@
+{% extends "auth/base_auth.html" %}
+{% block title %}Entrar{% endblock %}
+{% block content %}
+  <div class="auth-heading">
+    <span class="eyebrow">Bem-vindo de volta</span>
+    <h2>Acesse sua conta</h2>
+    <p>Continue de onde parou e acompanhe sua operação.</p>
+  </div>
+  <form method="post" action="/login" class="form-stack" data-loading-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <div class="field">
+      <label for="email">E-mail</label>
+      <div class="input-with-icon"><i data-lucide="mail"></i><input id="email" name="email" type="email" autocomplete="email" placeholder="voce@empresa.com.br" value="{{ request.form.email|default('') if request is defined else '' }}" required autofocus></div>
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="password">Senha</label><a href="/forgot-password">Esqueci minha senha</a></div>
+      <div class="input-with-icon"><i data-lucide="lock-keyhole"></i><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Digite sua senha" required><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha"><i data-lucide="eye"></i></button></div>
+    </div>
+    <label class="check-control"><input type="checkbox" name="remember" value="1"><span></span>Manter minha sessão ativa</label>
+    <button class="button button-primary button-block" type="submit"><span>Entrar no AutoFlow</span><i data-lucide="arrow-right"></i></button>
+  </form>
+  <p class="auth-switch">Ainda não tem uma conta? <a href="/register">Comece agora</a></p>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% set active_section = 'settings_whatsapp' %}
+{% set integration = integration_safe|default(whatsapp_integration|default({}, true), true) %}
+{% set connected = integration.get('connected', whatsapp_connected|default(false)) %}
+{% block title %}WhatsApp{% endblock %}
+{% block page_id %}settings-whatsapp{% endblock %}
+{% block content %}
+<header class="page-header"><div><span class="eyebrow">Configurações</span><h1>WhatsApp</h1><p>Conecte a API oficial da Meta e acompanhe a saúde da integração.</p></div><div class="page-actions">{% if connected %}<button class="button button-secondary" type="button" data-test-whatsapp data-url="/settings/whatsapp/test"><i data-lucide="send"></i>Enviar teste</button>{% endif %}<button class="button button-primary" type="submit" form="whatsapp-settings-form"><i data-lucide="save"></i>Salvar configurações</button></div></header>
+<nav class="settings-subnav"><a href="/settings/ai"><i data-lucide="sparkles"></i>Assistente de IA</a><a class="is-active" href="/settings/whatsapp"><i data-lucide="message-circle-more"></i>WhatsApp</a></nav>
+
+<section class="connection-hero card {{ 'connected' if connected else 'disconnected' }}"><span class="connection-hero-icon"><i data-lucide="message-circle-more"></i><i class="connection-check" data-lucide="{{ 'check' if connected else 'x' }}"></i></span><div><span class="status-badge {{ 'success' if connected else 'warning' }}"><i></i>{{ 'Conectado' if connected else 'Configuração pendente' }}</span><h2>{{ integration.get('display_phone_number')|default('Nenhum número conectado', true) }}</h2><p>{{ 'Credenciais validadas pela API oficial da Meta.' if connected else 'Conecte um número do WhatsApp Business para iniciar os atendimentos.' }}</p>{% if connected %}<div class="connection-meta"><span><i data-lucide="shield-check"></i>Credenciais validadas</span><span><i data-lucide="clock-3"></i>Último evento {{ integration.get('last_webhook_label')|default('ainda não recebido', true) }}</span></div>{% endif %}</div><div class="connection-hero-actions">{% if connected %}<button type="button" class="button button-secondary danger-outline" data-confirm-action="/settings/whatsapp/disconnect" data-confirm-title="Desconectar WhatsApp?" data-confirm-message="Novas mensagens deixarão de ser recebidas até uma nova conexão."><i data-lucide="unplug"></i>Desconectar</button>{% else %}<a class="button button-primary" href="#configuration"><i data-lucide="plug-zap"></i>Configurar conexão</a>{% endif %}</div></section>
+
+<div class="whatsapp-settings-grid">
+  <form id="whatsapp-settings-form" class="settings-main" method="post" action="/settings/whatsapp" data-settings-form data-ajax-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <article class="card settings-card" id="configuration">
+      <header class="settings-card-header">
+        <span class="settings-number">01</span>
+        <div><h2>Credenciais da Meta</h2><p>Dados disponíveis no painel WhatsApp do Meta for Developers.</p></div>
+        <a class="text-link" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Abrir Meta<i data-lucide="external-link"></i></a>
+      </header>
+      <div class="settings-card-body form-stack">
+        <div class="field">
+          <div class="label-row"><label for="phone-number-id">ID do número de telefone</label><button type="button" class="copy-button" data-copy-target="phone-number-id"><i data-lucide="copy"></i>Copiar</button></div>
+          <input id="phone-number-id" name="phone_number_id" value="{{ integration.get('phone_number_id_masked', '') }}" placeholder="000000000000000" autocomplete="off" required>
+        </div>
+        <div class="field"><label for="business-account-id">ID da conta do WhatsApp Business</label><input id="business-account-id" name="business_account_id" value="{{ integration.get('business_account_id_masked', '') }}" placeholder="000000000000000" autocomplete="off"></div>
+        <div class="field">
+          <div class="label-row"><label for="access-token">Token de acesso</label>{% if integration.get('has_access_token', false) %}<span class="verified-label"><i data-lucide="shield-check"></i>Token salvo</span>{% endif %}</div>
+          <div class="secret-input"><input id="access-token" name="access_token" type="password" value="" placeholder="{{ '••••••••••••••••••••••••' if integration.get('has_access_token', false) else 'Cole o token permanente' }}" autocomplete="new-password"><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar token"><i data-lucide="eye"></i></button></div>
+          <small class="field-hint">Por segurança, o token salvo nunca é retornado ao navegador. Deixe vazio para mantê-lo.</small>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <div class="label-row"><label for="verify-token">Token de verificação</label><span class="verified-label"><i data-lucide="{{ 'shield-check' if verify_token_configured|default(false) else 'circle-alert' }}"></i>{{ 'Configurado no servidor' if verify_token_configured|default(false) else 'Não configurado' }}</span></div>
+            <input id="verify-token" type="text" value="{{ '••••••••••••••••' if verify_token_configured|default(false) else '' }}" placeholder="Defina WHATSAPP_VERIFY_TOKEN no servidor" readonly aria-readonly="true">
+            <small class="field-hint">Por ser global no webhook, este token é gerenciado somente pelo ambiente do servidor.</small>
+          </div>
+          <div class="field"><label for="app-secret">App Secret</label><div class="secret-input"><input id="app-secret" name="app_secret" type="password" value="" placeholder="{{ '••••••••••••••••' if integration.get('has_app_secret', false) else 'Cole o App Secret' }}" autocomplete="new-password"><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar App Secret"><i data-lucide="eye"></i></button></div></div>
+        </div>
+        <div class="security-note"><i data-lucide="lock-keyhole"></i><span>Credenciais são criptografadas no servidor. Tokens e segredos nunca aparecem no HTML após serem salvos.</span></div>
+      </div>
+    </article>
+
+    <article class="card settings-card"><header class="settings-card-header"><span class="settings-number">02</span><div><h2>Webhook</h2><p>Use estes dados para configurar o recebimento na Meta.</p></div><span class="status-badge {{ 'success' if integration.get('webhook_verified', false) else 'warning' }}"><i></i>{{ 'Verificado' if integration.get('webhook_verified', false) else 'Aguardando verificação' }}</span></header><div class="settings-card-body form-stack"><div class="readonly-field"><label>URL de callback</label><div><code id="webhook-url">{{ integration.get('webhook_url')|default(webhook_url|default('/webhooks/whatsapp', true), true) }}</code><button type="button" class="copy-button" data-copy-target="webhook-url"><i data-lucide="copy"></i>Copiar</button></div></div><div class="webhook-events"><strong>Eventos necessários</strong><div><span><i data-lucide="check"></i><code>messages</code></span><span><i data-lucide="check"></i><code>message_template_status_update</code></span></div></div><button class="button button-secondary fit-content" type="button" data-check-webhook data-url="/settings/whatsapp/check"><i data-lucide="activity"></i>Verificar conexão</button></div></article>
+    <footer class="settings-save-bar"><span><i data-lucide="info"></i>Utilize apenas a WhatsApp Cloud API oficial da Meta.</span><button class="button button-primary" type="submit"><i data-lucide="save"></i>Salvar configurações</button></footer>
+  </form>
+
+  <aside class="whatsapp-side">
+    <article class="card integration-health"><header><h2>Saúde da integração</h2><span class="status-orb {{ 'success' if connected else 'warning' }}"><i data-lucide="activity"></i></span></header><div class="health-score"><strong>{{ 'Ativa' if connected else 'Pendente' }}</strong><span>{{ 'Conexão validada' if connected else 'Configuração necessária' }}</span></div><div class="health-checks"><div><span><i data-lucide="{{ 'check' if connected else 'minus' }}"></i>Credenciais</span><strong>{{ 'Válidas' if connected else 'Pendentes' }}</strong></div><div><span><i data-lucide="{{ 'check' if integration.get('webhook_verified', false) else 'minus' }}"></i>Webhook</span><strong>{{ 'Ativo' if integration.get('webhook_verified', false) else 'Pendente' }}</strong></div><div><span><i data-lucide="clock"></i>Última mensagem</span><strong>{{ integration.get('last_message_label')|default('—', true) }}</strong></div><div><span><i data-lucide="triangle-alert"></i>Erros em 24h</span><strong class="{{ 'danger-text' if integration.get('errors_24h') else '' }}">{{ integration.get('errors_24h')|default('—', true) }}</strong></div></div></article>
+    <article class="card webhook-log-card"><header class="card-header"><div><h2>Eventos recentes</h2><p>Últimos retornos da Meta</p></div></header><div class="webhook-log-list">{% for log in (webhook_logs|default([], true))[:6] %}<div><span class="log-status {{ 'success' if log.success|default(false) else 'error' }}"><i data-lucide="{{ 'check' if log.success|default(false) else 'x' }}"></i></span><span><strong>{{ log.event_type|default('Evento sem tipo', true) }}</strong><small>{{ log.description|default('Sem descrição', true) }}</small></span><time>{{ log.time_label|default('') }}</time></div>{% else %}<div class="dropdown-empty"><i data-lucide="radio"></i><span>Nenhum evento recebido.</span></div>{% endfor %}</div></article>
+    <article class="card help-card"><span><i data-lucide="life-buoy"></i></span><div><h3>Precisa de ajuda?</h3><p>Siga o passo a passo da Meta para criar o app e obter as credenciais.</p><a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener">Ver documentação<i data-lucide="external-link"></i></a></div></article>
+  </aside>
+</div>
+{% endblock %}

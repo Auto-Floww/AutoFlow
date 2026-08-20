@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% set active_section = 'conversations' %}
+{% set conversation_list = conversations|default([], true) %}
+{% set active = active_conversation|default(none, true) %}
+{% set message_list = messages|default([], true) %}
+{% block title %}Conversas{% endblock %}
+{% block page_id %}conversations{% endblock %}
+{% block body_class %}conversation-page{% endblock %}
+{% block content %}
+<div class="conversation-shell" data-conversation-app data-mobile-panel="{{ 'chat' if active else 'list' }}" data-conversation-id="{{ active.id if active else '' }}" data-poll-url="{{ poll_url|default('') }}">
+  <section class="conversation-list-panel" data-conversation-panel="list" aria-label="Lista de conversas">
+    <header class="conversation-list-head">
+      <div class="panel-title-row"><div><h1>Conversas</h1><p>{{ total_conversations|default(conversation_list|length) }} atendimentos</p></div><button class="icon-button" type="button" aria-label="Nova conversa" data-modal-open="new-conversation-modal"><i data-lucide="square-pen"></i></button></div>
+      <div class="search-field"><i data-lucide="search"></i><input type="search" placeholder="Buscar nome ou telefone" aria-label="Buscar conversas" data-filter-input="conversation-items"><kbd>⌘K</kbd></div>
+      <div class="filter-tabs" role="tablist" aria-label="Filtrar conversas">
+        <button type="button" class="is-active" data-conversation-filter="all">Todas <span>{{ total_conversations|default(conversation_list|length) }}</span></button>
+        <button type="button" data-conversation-filter="unread">Não lidas <span>{{ unread_conversations|default(0) }}</span></button>
+        <button type="button" data-conversation-filter="human">Humano</button>
+      </div>
+    </header>
+    <div class="conversation-items" id="conversation-items" data-filter-list>
+      {% for conversation in conversation_list %}
+        {% set conv_customer = conversation.customer|default(none, true) %}
+        {% set conv_name = conv_customer.name if conv_customer else conversation.customer_name|default('Cliente') %}
+        {% set unread = conversation.unread_count|default(0) %}
+        {% set ai_active = conversation.ai_status|default('ACTIVE') == 'ACTIVE' %}
+        <a class="conversation-item {{ 'is-active' if active and conversation.id == active.id else '' }}" href="/conversations/{{ conversation.id }}" data-filter-item data-search="{{ conv_name }} {{ conv_customer.phone if conv_customer else conversation.phone|default('') }}" data-status="{{ 'unread' if unread else 'read' }} {{ 'ai' if ai_active else 'human' }}" data-conversation-link="{{ conversation.id }}">
+          <span class="avatar avatar-md avatar-color-{{ loop.index0 % 5 }}">{{ conv_name|first|upper }}<span class="channel-indicator"><i data-lucide="message-circle"></i></span></span>
+          <span class="conversation-item-body">
+            <span class="conversation-item-top"><strong>{{ conv_name }}</strong><time>{{ conversation.time_label|default(conversation.updated_label|default('')) }}</time></span>
+            <span class="conversation-preview">{% if conversation.last_message_from_agent|default(false) %}<i data-lucide="check-check"></i>{% endif %}{{ conversation.last_message_text|default(conversation.last_message|default('Nova conversa'))|truncate(46) }}</span>
+            <span class="conversation-meta">
+              {% for tag in (conversation.tags|default([], true))[:2] %}<em class="tag tag-soft">{{ tag.name|default(tag) }}</em>{% endfor %}
+              <em class="ai-state {{ 'active' if ai_active else 'paused' }}"><i data-lucide="{{ 'sparkles' if ai_active else 'headphones' }}"></i>{{ 'IA' if ai_active else 'Humano' }}</em>
+            </span>
+          </span>
+          {% if unread %}<span class="unread-count">{{ unread if unread < 100 else '99+' }}</span>{% endif %}
+        </a>
+      {% else %}
+        <div class="empty-state empty-state-compact"><span class="empty-icon"><i data-lucide="messages-square"></i></span><h3>Nenhuma conversa</h3><p>As mensagens recebidas pelo WhatsApp aparecerão aqui.</p></div>
+      {% endfor %}
+      <div class="filter-empty" data-filter-empty hidden><i data-lucide="search-x"></i><strong>Nenhuma conversa encontrada</strong><span>Tente buscar por outro nome ou telefone.</span></div>
+    </div>
+  </section>
+
+  <section class="chat-panel {{ '' if active else 'chat-empty' }}" data-conversation-panel="chat" aria-label="Chat">
+    {% if active %}
+      {% set active_customer = active.customer|default(customer|default(none), true) %}
+      {% set active_name = active_customer.name if active_customer else active.customer_name|default('Cliente') %}
+      <header class="chat-header">
+        <button class="icon-button mobile-only" type="button" data-mobile-conversation="list" aria-label="Voltar para conversas"><i data-lucide="arrow-left"></i></button>
+        <span class="avatar avatar-md">{{ active_name|first|upper }}<i class="presence-dot"></i></span>
+        <div class="chat-person"><strong>{{ active_name }}</strong><span><i data-lucide="message-circle"></i>{{ active_customer.phone if active_customer else active.phone|default('WhatsApp') }}</span></div>
+        <div class="chat-actions">
+          {% set active_ai = active.ai_status|default('ACTIVE') == 'ACTIVE' %}
+          {% if active_ai %}
+            <form method="post" action="/conversations/{{ active.id }}/assume" data-ajax-form data-success-reload="true"><input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><button type="submit" class="button button-secondary button-sm"><i data-lucide="headphones"></i><span>Assumir atendimento</span></button></form>
+          {% else %}
+            <form method="post" action="/conversations/{{ active.id }}/return-to-ai" data-ajax-form data-success-reload="true"><input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><button type="submit" class="button button-secondary button-sm"><i data-lucide="sparkles"></i><span>Devolver para IA</span></button></form>
+          {% endif %}
+          <button type="button" class="icon-button" data-mobile-conversation="details" aria-label="Ver dados do cliente"><i data-lucide="panel-right-open"></i></button>
+          <div class="dropdown"><button class="icon-button" type="button" data-dropdown-trigger="chat-more" aria-expanded="false" aria-label="Mais opções"><i data-lucide="ellipsis-vertical"></i></button><div class="dropdown-menu align-right" data-dropdown="chat-more" hidden><button type="button" data-action="mark-unread"><i data-lucide="mail"></i>Marcar como não lida</button><button type="button" data-action="archive-conversation"><i data-lucide="archive"></i>Arquivar conversa</button><button type="button" class="danger-text" data-action="close-conversation"><i data-lucide="circle-x"></i>Encerrar conversa</button></div></div>
+        </div>
+      </header>
+      <div class="ai-control-bar {{ 'ai-running' if active_ai else 'human-running' }}">
+        <span class="ai-control-icon"><i data-lucide="{{ 'bot' if active_ai else 'headphones' }}"></i></span>
+        <span><strong>{{ 'IA atendendo' if active_ai else 'Atendimento humano' }}</strong><small>{{ 'O assistente responde usando somente dados verificados da empresa.' if active_ai else 'A IA está pausada nesta conversa.' }}</small></span>
+        <span class="status-chip {{ 'success' if active_ai else 'warning' }}"><i></i>{{ 'Ativa' if active_ai else 'Pausada' }}</span>
+      </div>
+      <div class="message-list" data-message-list>
+        {% set last_date = namespace(value='') %}
+        {% for message in message_list %}
+          {% set date_label = message.date_label|default('Hoje') %}
+          {% if date_label != last_date.value %}<div class="message-date"><span>{{ date_label }}</span></div>{% set last_date.value = date_label %}{% endif %}
+          {% set sender_raw = message.sender_type.value if message.sender_type is defined and message.sender_type.value is defined else message.sender_type|default('customer') %}
+          {% set sender = sender_raw|string|lower %}
+          <div class="message-row {{ 'outgoing' if sender in ['agent','assistant','ai','human','business'] else 'incoming' }}" data-message-id="{{ message.id|default('') }}">
+            {% if sender not in ['agent','assistant','ai','human','business'] %}<span class="avatar avatar-xs">{{ active_name|first|upper }}</span>{% endif %}
+            <div class="message-group">
+              {% if sender in ['ai','assistant'] %}<span class="message-author"><i data-lucide="sparkles"></i>{{ ai_name|default('Lumi · IA') }}</span>{% elif sender in ['agent','human'] %}<span class="message-author">{{ message.sender_name|default('Você') }}</span>{% endif %}
+              <div class="message-bubble">
+                {% if message.media_url|default('') %}<a class="message-attachment" href="{{ message.media_url }}" target="_blank" rel="noopener"><i data-lucide="file-text"></i><span>{{ message.media_name|default('Anexo') }}</span><i data-lucide="download"></i></a>{% endif %}
+                <p>{{ message.content|default(message.text|default('')) }}</p>
+                <span class="message-time">{{ message.time_label|default('') }}{% if sender in ['agent','assistant','ai','human','business'] %}<i data-lucide="check-check"></i>{% endif %}</span>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="empty-chat"><span><i data-lucide="message-circle-dashed"></i></span><h3>Início da conversa</h3><p>Envie uma mensagem para começar o atendimento.</p></div>
+        {% endfor %}
+      </div>
+      <footer class="composer-wrap">
+        <div class="quick-replies" data-quick-replies hidden><button type="button">Olá! Como posso ajudar?</button><button type="button">Vou verificar para você.</button><button type="button">Posso ajudar em algo mais?</button></div>
+        <form class="composer" method="post" action="/conversations/{{ active.id }}/messages" data-chat-form>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+          <button type="button" class="icon-button" data-attachment-trigger aria-label="Anexar arquivo"><i data-lucide="paperclip"></i></button>
+          <textarea name="message" rows="1" maxlength="4096" placeholder="Digite uma mensagem..." aria-label="Mensagem" data-composer-input required></textarea>
+          <button type="button" class="icon-button" data-quick-reply-trigger aria-label="Respostas rápidas"><i data-lucide="message-square-text"></i></button>
+          <button type="submit" class="send-button" aria-label="Enviar mensagem"><i data-lucide="send"></i></button>
+        </form>
+        <small>Enter para enviar · Shift + Enter para quebrar linha</small>
+      </footer>
+    {% else %}
+      <div class="chat-placeholder"><span class="chat-placeholder-art"><i data-lucide="messages-square"></i><i data-lucide="sparkles"></i></span><h2>Suas conversas, em um só lugar</h2><p>Selecione um atendimento ao lado para visualizar as mensagens e os dados do cliente.</p></div>
+    {% endif %}
+  </section>
+
+  <aside class="customer-panel" data-conversation-panel="details" aria-label="Dados do cliente">
+    {% if active %}
+      {% set active_customer = active.customer|default(customer|default(none), true) %}
+      {% set active_name = active_customer.name if active_customer else active.customer_name|default('Cliente') %}
+      <header class="customer-panel-head"><h2>Dados do cliente</h2><button type="button" class="icon-button mobile-only" data-mobile-conversation="chat" aria-label="Fechar detalhes"><i data-lucide="x"></i></button></header>
+      <div class="customer-profile"><span class="avatar avatar-xl">{{ active_name|first|upper }}</span><h3>{{ active_name }}</h3><p>{{ active_customer.organization if active_customer and active_customer.organization|default('') else 'Cliente via WhatsApp' }}</p><div class="customer-profile-actions"><a href="tel:{{ active_customer.phone if active_customer else active.phone|default('') }}" class="icon-button" title="Ligar"><i data-lucide="phone"></i></a><button type="button" class="icon-button" title="Adicionar nota" data-focus-note><i data-lucide="sticky-note"></i></button><a href="/customers/{{ active_customer.id if active_customer else active.customer_id|default('') }}" class="icon-button" title="Ver perfil"><i data-lucide="external-link"></i></a></div></div>
+      <div class="details-section"><div class="details-title"><h3>Contato</h3></div><dl class="contact-list"><div><dt><i data-lucide="phone"></i>Telefone</dt><dd>{{ active_customer.phone if active_customer else active.phone|default('Não informado') }}</dd></div><div><dt><i data-lucide="mail"></i>E-mail</dt><dd>{{ active_customer.email if active_customer and active_customer.email|default('') else 'Não informado' }}</dd></div><div><dt><i data-lucide="map-pin"></i>Localização</dt><dd>{{ active_customer.location if active_customer and active_customer.location|default('') else 'Não informada' }}</dd></div></dl></div>
+      <div class="details-section"><div class="details-title"><h3>Etapa do CRM</h3></div><label class="select-control full"><i data-lucide="panels-top-left"></i><select data-stage-select data-customer-id="{{ active_customer.id if active_customer else active.customer_id|default('') }}"><option value="NEW" {{ 'selected' if active_customer and active_customer.crm_stage|default('NOVO') == 'NOVO' else '' }}>Novo</option><option value="INTERESTED" {{ 'selected' if active_customer and active_customer.crm_stage|default('') == 'INTERESSADO' else '' }}>Interessado</option><option value="QUALIFIED" {{ 'selected' if active_customer and active_customer.crm_stage|default('') == 'QUALIFICADO' else '' }}>Qualificado</option><option value="PROPOSAL" {{ 'selected' if active_customer and active_customer.crm_stage|default('') == 'PROPOSTA' else '' }}>Proposta</option><option value="SALE" {{ 'selected' if active_customer and active_customer.crm_stage|default('') == 'VENDA' else '' }}>Venda</option><option value="LOST" {{ 'selected' if active_customer and active_customer.crm_stage|default('') == 'PERDIDO' else '' }}>Perdido</option></select></label></div>
+      <div class="details-section"><div class="details-title"><h3>Tags da conversa</h3></div><div class="tag-list">{% for tag in active.tags|default([], true) %}<span class="tag tag-soft">{{ tag.name|default(tag) }}</span>{% else %}<span class="muted-small">Nenhuma tag</span>{% endfor %}</div></div>
+      <div class="details-section"><div class="details-title"><h3>Resumo da IA</h3><span class="ai-label"><i data-lucide="sparkles"></i>IA</span></div><div class="ai-summary"><p>{{ active.summary|default('A conversa ainda não possui informações suficientes para gerar um resumo.', true) }}</p>{% if active.intent|default('') %}<span>Intenção: <strong>{{ active.intent }}</strong></span>{% endif %}</div></div>
+      <div class="details-section"><div class="details-title"><h3>Nota interna</h3><span class="save-status" data-note-status></span></div><textarea class="note-input" data-customer-note data-url="/customers/{{ active_customer.id if active_customer else active.customer_id|default('') }}/note" placeholder="Adicione uma observação visível apenas para a equipe...">{{ active_customer.notes if active_customer and active_customer.notes|default('') else '' }}</textarea></div>
+    {% endif %}
+  </aside>
+</div>
+
+<div class="modal" id="new-conversation-modal" data-modal hidden><button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar"></button><section class="modal-dialog modal-sm" role="dialog" aria-modal="true" aria-labelledby="new-conversation-title"><header class="modal-header"><div><h2 id="new-conversation-title">Nova conversa</h2><p>Inicie um atendimento pelo WhatsApp.</p></div><button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button></header><form class="modal-body form-stack" method="post" action="/conversations" data-ajax-form><input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><div class="field"><label for="new-phone">Número com DDD</label><div class="input-with-icon"><i data-lucide="phone"></i><input id="new-phone" name="phone" type="tel" placeholder="(11) 99999-9999" data-phone required></div></div><div class="field"><label for="new-message">Mensagem</label><textarea id="new-message" name="message" rows="4" placeholder="Olá! Como podemos ajudar?" required></textarea></div><footer class="modal-footer"><button type="button" class="button button-secondary" data-modal-close>Cancelar</button><button type="submit" class="button button-primary"><i data-lucide="send"></i>Iniciar conversa</button></footer></form></section></div>
+{% endblock %}

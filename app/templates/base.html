@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AutoFlow — atendimento, vendas e automação com IA para WhatsApp.">
+  <meta name="theme-color" content="#0d5f56">
+  <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+  <title>{% block title %}Painel{% endblock %} · AutoFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="app-shell {% block body_class %}{% endblock %}" data-page="{% block page_id %}app{% endblock %}">
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+
+  <div class="mobile-overlay" data-sidebar-close aria-hidden="true"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+    <div class="sidebar-head">
+      <a class="brand" href="/dashboard" aria-label="AutoFlow — início">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="brand-name">Auto<span>Flow</span></span>
+      </a>
+      <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="workspace-card">
+      <span class="workspace-avatar">{{ (current_user.company.name if current_user is defined and current_user.company is defined and current_user.company else 'AF')|string|truncate(2, true, '')|upper }}</span>
+      <span class="workspace-copy">
+        <strong>{{ current_user.company.name if current_user is defined and current_user.company is defined and current_user.company else 'Minha empresa' }}</strong>
+        <small>Workspace principal</small>
+      </span>
+      <i data-lucide="chevrons-up-down" aria-hidden="true"></i>
+    </div>
+
+    <nav class="sidebar-nav">
+      <p class="nav-label">Visão geral</p>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'dashboard' else '' }}" href="/dashboard">
+        <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Dashboard</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'conversations' else '' }}" href="/conversations">
+        <i data-lucide="messages-square" aria-hidden="true"></i><span>Conversas</span>
+        {% if unread_conversations|default(0) %}<span class="nav-count">{{ unread_conversations }}</span>{% endif %}
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'customers' else '' }}" href="/customers">
+        <i data-lucide="users" aria-hidden="true"></i><span>Clientes</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'crm' else '' }}" href="/customers/crm">
+        <i data-lucide="panels-top-left" aria-hidden="true"></i><span>CRM</span>
+      </a>
+
+      <p class="nav-label">Operação</p>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'products' else '' }}" href="/products">
+        <i data-lucide="package" aria-hidden="true"></i><span>Produtos</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'inventory' else '' }}" href="/inventory">
+        <i data-lucide="boxes" aria-hidden="true"></i><span>Estoque</span>
+        {% if low_stock_count|default(0) %}<span class="nav-dot" title="{{ low_stock_count }} itens com estoque baixo"></span>{% endif %}
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'delivery' else '' }}" href="/delivery">
+        <i data-lucide="truck" aria-hidden="true"></i><span>Entrega</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'appointments' else '' }}" href="/appointments">
+        <i data-lucide="calendar-days" aria-hidden="true"></i><span>Agendamentos</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'faq' else '' }}" href="/faq">
+        <i data-lucide="book-open-text" aria-hidden="true"></i><span>Base de respostas</span>
+      </a>
+
+      <p class="nav-label">Configurações</p>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'settings_ai' else '' }}" href="/settings/ai">
+        <i data-lucide="sparkles" aria-hidden="true"></i><span>Assistente de IA</span>
+      </a>
+      <a class="nav-link {{ 'is-active' if active_section|default('') == 'settings_whatsapp' else '' }}" href="/settings/whatsapp">
+        <i data-lucide="message-circle-more" aria-hidden="true"></i><span>WhatsApp</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="plan-progress">
+        <div class="plan-row"><span>Plano atual</span><strong>{{ plan_name|default('Não informado') }}</strong></div>
+        <div class="progress" role="progressbar" aria-valuenow="{{ plan_usage|default(0) }}" aria-valuemin="0" aria-valuemax="100">
+          <span style="width: {{ plan_usage|default(0) }}%"></span>
+        </div>
+        <small>{{ plan_usage_label|default('Nenhuma conversa registrada') }}</small>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-column">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-button menu-button" type="button" data-sidebar-open aria-label="Abrir menu">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+        <div class="global-search" role="search">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <input type="search" aria-label="Buscar no AutoFlow" placeholder="Buscar clientes, conversas..." data-command-search>
+          <kbd>⌘ K</kbd>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span class="connection-pill {{ 'is-online' if whatsapp_connected|default(false) else 'is-offline' }}">
+          <span></span>{{ 'WhatsApp conectado' if whatsapp_connected|default(false) else 'WhatsApp desconectado' }}
+        </span>
+        <div class="dropdown">
+          <button class="icon-button notification-button" type="button" data-dropdown-trigger="notifications" aria-expanded="false" aria-label="Notificações">
+            <i data-lucide="bell" aria-hidden="true"></i>
+            {% if notification_count|default(0) %}<span class="notification-badge">{{ notification_count if notification_count < 10 else '9+' }}</span>{% endif %}
+          </button>
+          <div class="dropdown-menu notification-menu" data-dropdown="notifications" hidden>
+            <div class="dropdown-head"><strong>Notificações</strong><button type="button" class="text-button" data-mark-read>Marcar como lidas</button></div>
+            {% set nav_notifications = nav_notifications|default(notifications|default([], true), true) %}
+            {% for item in nav_notifications[:4] %}
+              <a href="{{ item.url|default('#') }}" class="notification-item {{ '' if item.read|default(false) else 'is-unread' }}">
+                <span class="notification-icon"><i data-lucide="{{ item.icon|default('bell') }}" aria-hidden="true"></i></span>
+                <span><strong>{{ item.title }}</strong><small>{{ item.description|default('') }}</small><time>{{ item.time_ago|default('Agora') }}</time></span>
+              </a>
+            {% else %}
+              <div class="dropdown-empty"><i data-lucide="bell-off"></i><span>Tudo em dia por aqui.</span></div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="user-menu-button" type="button" data-dropdown-trigger="user" aria-expanded="false">
+            <span class="avatar avatar-sm">{{ (current_user.name if current_user is defined and current_user.name is defined else 'U')|string|first|upper }}</span>
+            <span class="user-menu-copy"><strong>{{ current_user.name if current_user is defined and current_user.name is defined else 'Usuário' }}</strong><small>{{ current_user.role if current_user is defined and current_user.role is defined else 'Membro' }}</small></span>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu user-dropdown" data-dropdown="user" hidden>
+            <a href="/change-password"><i data-lucide="key-round"></i>Alterar senha</a>
+            <a href="/settings/ai"><i data-lucide="settings-2"></i>Configurações</a>
+            <span class="dropdown-separator"></span>
+            <form method="post" action="/logout">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+              <button type="submit"><i data-lucide="log-out"></i>Sair</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" id="main-content" tabindex="-1">
+      {% with flashed = get_flashed_messages(with_categories=true) if get_flashed_messages is defined else [] %}
+        {% for category, message in flashed %}
+          <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else category }}" role="alert" data-auto-dismiss>
+            <i data-lucide="{{ 'circle-alert' if category in ['error', 'danger'] else 'circle-check' }}" aria-hidden="true"></i>
+            <span>{{ message }}</span>
+            <button type="button" class="alert-close" data-dismiss aria-label="Fechar"><i data-lucide="x"></i></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast-region" aria-live="polite" aria-atomic="true" data-toast-region></div>
+  <div class="command-palette" data-command-palette hidden>
+    <button class="command-backdrop" type="button" data-command-close aria-label="Fechar busca"></button>
+    <div class="command-dialog" role="dialog" aria-modal="true" aria-label="Busca rápida">
+      <div class="command-input"><i data-lucide="search"></i><input type="search" placeholder="Digite para buscar ou navegar..." data-command-input><kbd>Esc</kbd></div>
+      <div class="command-results">
+        <p>Atalhos</p>
+        <a href="/conversations"><i data-lucide="messages-square"></i><span>Ir para Conversas<small>Acompanhe atendimentos em tempo real</small></span></a>
+        <a href="/customers"><i data-lucide="users"></i><span>Buscar clientes<small>Consulte dados e histórico</small></span></a>
+        <a href="/products"><i data-lucide="package-search"></i><span>Buscar produtos<small>Preços, variantes e estoque</small></span></a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

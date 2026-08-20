@@ -1,0 +1,26 @@
+{% extends "auth/base_auth.html" %}
+{% block title %}Criar conta{% endblock %}
+{% block content %}
+  <div class="auth-heading">
+    <span class="eyebrow">Comece em poucos minutos</span>
+    <h2>Crie sua conta</h2>
+    <p>Configure sua empresa e leve inteligência ao atendimento.</p>
+  </div>
+  <form method="post" action="/register" class="form-stack" data-loading-form data-password-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <div class="form-grid form-grid-2">
+      <div class="field"><label for="name">Seu nome</label><div class="input-with-icon"><i data-lucide="user"></i><input id="name" name="name" autocomplete="name" placeholder="Nome completo" required></div></div>
+      <div class="field"><label for="company_name">Empresa</label><div class="input-with-icon"><i data-lucide="building-2"></i><input id="company_name" name="company_name" autocomplete="organization" placeholder="Nome da empresa" required></div></div>
+    </div>
+    <div class="field"><label for="email">E-mail profissional</label><div class="input-with-icon"><i data-lucide="mail"></i><input id="email" name="email" type="email" autocomplete="email" placeholder="voce@empresa.com.br" required></div></div>
+    <div class="field">
+      <label for="password">Crie uma senha</label>
+      <div class="input-with-icon"><i data-lucide="lock-keyhole"></i><input id="password" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo de 8 caracteres" data-password-strength required><button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha"><i data-lucide="eye"></i></button></div>
+      <div class="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <small class="field-hint" data-password-hint>Use letras, número e um caractere especial.</small>
+    </div>
+    <label class="check-control check-start"><input type="checkbox" name="terms" value="1" required><span></span><small>Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a>.</small></label>
+    <button class="button button-primary button-block" type="submit"><span>Criar minha conta</span><i data-lucide="arrow-right"></i></button>
+  </form>
+  <p class="auth-switch">Já tem uma conta? <a href="/login">Entrar</a></p>
+{% endblock %}

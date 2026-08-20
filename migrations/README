@@ -1,0 +1,15 @@
+Migrações de banco de dados do AutoFlow
+=========================================
+
+Este diretório é gerenciado pelo Flask-Migrate/Alembic. Execute os comandos
+sempre pela application factory:
+
+    flask --app 'app:create_app()' db upgrade
+
+Para gerar uma nova revisão após alterar os modelos:
+
+    flask --app 'app:create_app()' db migrate -m "descricao da alteracao"
+
+Revise manualmente toda migração gerada antes de aplicá-la. Em produção,
+faça backup do MySQL e aplique `db upgrade` uma única vez, antes de iniciar
+as novas instâncias web e workers.

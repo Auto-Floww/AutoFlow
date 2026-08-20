@@ -1,0 +1,33 @@
+{% macro empty_state(icon='inbox', title='Nada por aqui', description='Quando houver dados, eles aparecerão nesta área.', action_label='', action_target='') -%}
+<div class="empty-state">
+  <span class="empty-icon"><i data-lucide="{{ icon }}" aria-hidden="true"></i></span>
+  <h3>{{ title }}</h3>
+  <p>{{ description }}</p>
+  {% if action_label %}<button type="button" class="button button-primary button-sm" data-modal-open="{{ action_target }}">{{ action_label }}</button>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro pagination(pagination, endpoint_path) -%}
+{% if pagination and pagination.pages|default(1) > 1 %}
+<nav class="pagination" aria-label="Paginação">
+  <a class="page-button {{ 'is-disabled' if not pagination.has_prev else '' }}" href="{{ endpoint_path }}?page={{ pagination.prev_num if pagination.has_prev else 1 }}" aria-label="Página anterior"><i data-lucide="chevron-left"></i></a>
+  <span>Página <strong>{{ pagination.page }}</strong> de {{ pagination.pages }}</span>
+  <a class="page-button {{ 'is-disabled' if not pagination.has_next else '' }}" href="{{ endpoint_path }}?page={{ pagination.next_num if pagination.has_next else pagination.pages }}" aria-label="Próxima página"><i data-lucide="chevron-right"></i></a>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro modal_start(id, title, description='', size='md') -%}
+<div class="modal" id="{{ id }}" data-modal hidden>
+  <button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar modal"></button>
+  <section class="modal-dialog modal-{{ size }}" role="dialog" aria-modal="true" aria-labelledby="{{ id }}-title">
+    <header class="modal-header">
+      <div><h2 id="{{ id }}-title">{{ title }}</h2>{% if description %}<p>{{ description }}</p>{% endif %}</div>
+      <button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button>
+    </header>
+{%- endmacro %}
+
+{% macro modal_end() -%}
+  </section>
+</div>
+{%- endmacro %}

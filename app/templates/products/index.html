@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import empty_state, pagination %}
+{% set active_section = 'products' %}
+{% set product_list = products|default([], true) %}
+{% block title %}Produtos{% endblock %}
+{% block page_id %}products{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><span class="eyebrow">Catálogo inteligente</span><h1>Produtos</h1><p>Mantenha preços, variantes e informações que a IA pode consultar.</p></div>
+  <div class="page-actions"><button class="button button-secondary" type="button" data-import-trigger><i data-lucide="upload"></i>Importar</button><button class="button button-primary" type="button" data-modal-open="product-modal"><i data-lucide="plus"></i>Novo produto</button></div>
+</header>
+
+<section class="summary-strip">
+  <div><span class="summary-icon teal"><i data-lucide="package"></i></span><span><small>Produtos cadastrados</small><strong>{{ product_stats.total|default(product_list|length) if product_stats is defined else product_list|length }}</strong></span></div>
+  <div><span class="summary-icon mint"><i data-lucide="circle-check"></i></span><span><small>Ativos no catálogo</small><strong>{{ product_stats.active|default(0) if product_stats is defined else 0 }}</strong></span></div>
+  <div><span class="summary-icon amber"><i data-lucide="triangle-alert"></i></span><span><small>Estoque baixo</small><strong>{{ product_stats.low_stock|default(0) if product_stats is defined else 0 }}</strong></span></div>
+  <div><span class="summary-icon violet"><i data-lucide="mouse-pointer-click"></i></span><span><small>Consultas pela IA</small><strong>{{ product_stats.ai_queries|default(0) if product_stats is defined else 0 }}</strong></span></div>
+</section>
+
+<section class="card data-card">
+  <header class="table-toolbar">
+    <div class="toolbar-search"><i data-lucide="search"></i><input type="search" placeholder="Buscar produto, SKU, marca..." aria-label="Buscar produtos" data-filter-input="product-results"></div>
+    <div class="toolbar-filters"><label class="select-control"><i data-lucide="tags"></i><select data-table-filter="category"><option value="">Todas as categorias</option>{% for category in categories|default([], true) %}<option value="{{ category|lower }}">{{ category }}</option>{% endfor %}</select></label><label class="select-control"><select data-table-filter="status"><option value="">Todos os status</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label><div class="view-switch" role="group" aria-label="Visualização"><button class="is-active" type="button" data-view-switch="grid" aria-label="Grade"><i data-lucide="layout-grid"></i></button><button type="button" data-view-switch="table" aria-label="Tabela"><i data-lucide="list"></i></button></div></div>
+  </header>
+  <div class="product-results product-grid" id="product-results" data-filter-list data-view-container>
+    {% for product in product_list %}
+      {% set product_active = product.is_active|default(product.active|default(false)) %}
+      <article class="product-card" data-filter-item data-search="{{ product.name }} {{ product.sku|default('') }} {{ product.brand|default('') }}" data-category="{{ product.category|default('')|lower }}" data-status="{{ 'active' if product_active else 'inactive' }}">
+        <div class="product-card-media">
+          {% if product.image_url|default('') %}<img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">{% else %}<span class="product-placeholder gradient-{{ ['one','two','three'][loop.index0 % 3] }}"><i data-lucide="package"></i></span>{% endif %}
+          <span class="status-badge {{ 'success' if product_active else 'neutral' }}"><i></i>{{ 'Ativo' if product_active else 'Inativo' }}</span>
+          <div class="dropdown product-card-menu"><button class="icon-button" type="button" data-dropdown-trigger="product-{{ product.id }}" aria-expanded="false" aria-label="Ações"><i data-lucide="ellipsis"></i></button><div class="dropdown-menu align-right" data-dropdown="product-{{ product.id }}" hidden><button type="button" data-modal-open="product-modal" data-edit-product='{{ {"id": product.id, "name": product.name, "sku": product.sku|default(""), "category": product.category|default(""), "brand": product.brand|default(""), "price": product.price|default(""), "promotional_price": product.promotional_price|default(""), "description": product.description|default("")}|tojson }}'><i data-lucide="pencil"></i>Editar produto</button><button type="button" data-toggle-action="/products/{{ product.id }}/toggle" data-toggle-label="{{ 'Desativar' if product_active else 'Ativar' }}"><i data-lucide="power"></i>{{ 'Desativar' if product_active else 'Ativar' }}</button><a href="/inventory?product_id={{ product.id }}"><i data-lucide="boxes"></i>Ver estoque</a><button type="button" class="danger-text" data-confirm-action="/products/{{ product.id }}/delete" data-confirm-title="Excluir produto?" data-confirm-message="O histórico de movimentações será preservado."><i data-lucide="trash-2"></i>Excluir</button></div></div>
+        </div>
+        <div class="product-card-body"><div class="product-category">{{ product.category|default('Sem categoria', true) }}</div><h2>{{ product.name }}</h2><p>{{ product.description|default('Sem descrição cadastrada.', true)|truncate(92) }}</p><div class="product-price">{% if product.promotional_price|default(none) %}<strong>{{ product.promotional_price_label|default('R$ ' ~ product.promotional_price) }}</strong><del>{{ product.price_label|default('R$ ' ~ product.price) }}</del>{% else %}<strong>{{ product.price_label|default('R$ ' ~ product.price|default('0,00')) }}</strong>{% endif %}</div></div>
+        <footer class="product-card-footer"><span><i data-lucide="barcode"></i>{{ product.sku|default('Sem SKU') }}</span><span class="{{ 'low-stock' if product.stock|default(0) <= product.minimum_stock|default(0) else '' }}"><i data-lucide="boxes"></i>{{ product.stock|default(0) }} em estoque</span></footer>
+      </article>
+    {% else %}
+      <div class="grid-empty">{{ empty_state('package-open', 'Seu catálogo está vazio', 'Cadastre produtos para a IA consultar preços, descrições e disponibilidade.', 'Cadastrar produto', 'product-modal') }}</div>
+    {% endfor %}
+    <div class="filter-empty" data-filter-empty hidden><i data-lucide="package-search"></i><strong>Nenhum produto encontrado</strong><span>Ajuste os filtros ou tente buscar outro termo.</span></div>
+  </div>
+  <footer class="table-footer"><span>{{ product_list|length }} produto{{ 's' if product_list|length != 1 else '' }} nesta página</span>{{ pagination(product_pagination|default(none), '/products') }}</footer>
+</section>
+
+<div class="modal" id="product-modal" data-modal hidden>
+  <button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar"></button>
+  <section class="modal-dialog modal-lg" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+    <header class="modal-header"><div><h2 id="product-modal-title" data-create-title="Novo produto" data-edit-title="Editar produto">Novo produto</h2><p>Informações precisas ajudam a IA a vender sem inventar dados.</p></div><button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <form method="post" action="/products" enctype="multipart/form-data" class="modal-form" data-entity-form="product" data-ajax-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><input type="hidden" name="id">
+      <div class="modal-body">
+        <div class="form-section"><h3>Informações principais</h3><div class="product-form-layout"><label class="image-uploader"><input type="file" name="image" accept="image/png,image/jpeg,image/webp" data-image-input><span data-image-preview><i data-lucide="image-plus"></i><strong>Adicionar imagem</strong><small>PNG, JPG ou WebP · máx. 5 MB</small></span></label><div class="form-stack"><div class="field"><label for="product-name">Nome do produto <em>*</em></label><input id="product-name" name="name" placeholder="Nome exibido no catálogo" required></div><div class="field"><label for="product-description">Descrição</label><textarea id="product-description" name="description" rows="4" maxlength="1000" placeholder="Características, materiais e diferenciais..."></textarea><small class="char-count"><span data-char-count>0</span>/1000</small></div></div></div></div>
+        <div class="form-section"><h3>Organização e preço</h3><div class="form-grid form-grid-3"><div class="field"><label for="product-sku">SKU <em>*</em></label><input id="product-sku" name="sku" placeholder="VES-AUR-01" required></div><div class="field"><label for="product-category">Categoria</label><input id="product-category" name="category" list="category-list" placeholder="Vestidos"><datalist id="category-list">{% for category in categories|default([], true) %}<option value="{{ category }}">{% endfor %}</datalist></div><div class="field"><label for="product-brand">Marca</label><input id="product-brand" name="brand" placeholder="Marca própria"></div></div><div class="form-grid form-grid-2"><div class="field"><label for="product-price">Preço <em>*</em></label><div class="input-prefix"><span>R$</span><input id="product-price" name="price" inputmode="decimal" placeholder="0,00" data-currency required></div></div><div class="field"><label for="product-sale-price">Preço promocional</label><div class="input-prefix"><span>R$</span><input id="product-sale-price" name="promotional_price" inputmode="decimal" placeholder="0,00" data-currency></div></div></div></div>
+        <div class="form-section"><div class="form-section-head"><div><h3>Variantes</h3><p>Crie opções de cor, tamanho, preço e estoque.</p></div><button type="button" class="button button-secondary button-sm" data-add-variant><i data-lucide="plus"></i>Adicionar variante</button></div><div class="variant-list" data-variant-list><div class="variant-empty" data-variant-empty><i data-lucide="combine"></i><span>Nenhuma variante adicionada.</span></div></div></div>
+        <div class="form-section form-section-inline"><div><h3>Disponível no atendimento</h3><p>A IA só apresenta produtos ativos aos clientes.</p></div><label class="switch"><input type="checkbox" name="active" value="1" checked><span></span><em>Ativo</em></label></div>
+      </div>
+      <footer class="modal-footer"><button class="button button-secondary" type="button" data-modal-close>Cancelar</button><button class="button button-primary" type="submit"><i data-lucide="check"></i>Salvar produto</button></footer>
+    </form>
+  </section>
+</div>
+
+<template id="variant-row-template"><div class="variant-row" data-variant-row><span class="drag-handle"><i data-lucide="grip-vertical"></i></span><div class="field"><label>Cor</label><input name="variant_color[]" placeholder="Ex.: Preto"></div><div class="field"><label>Tamanho</label><input name="variant_size[]" placeholder="Ex.: M"></div><div class="field"><label>SKU</label><input name="variant_sku[]" placeholder="SKU-VAR"></div><div class="field field-small"><label>Preço</label><input name="variant_price[]" inputmode="decimal" placeholder="0,00" data-currency></div><div class="field field-small"><label>Estoque</label><input name="variant_stock[]" type="number" min="0" value="0"></div><button type="button" class="icon-button danger-text" data-remove-variant aria-label="Remover variante"><i data-lucide="trash-2"></i></button></div></template>
+{% endblock %}

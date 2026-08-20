@@ -1,0 +1,101 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: autoflow
+      MYSQL_USER: autoflow
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h localhost -uroot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
+      FLASK_ENV: production
+      PRODUCT_UPLOAD_DIR: /app/uploads/products
+      PRODUCT_UPLOAD_URL_PREFIX: /products/uploads
+    command: >-
+      sh -c "flask --app run:app db upgrade &&
+      gunicorn --workers 3 --threads 2 --timeout 90 --bind 0.0.0.0:5000 run:app"
+    ports:
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-5000}:5000"
+    volumes:
+      - uploads_data:/app/uploads
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
+      FLASK_ENV: production
+    command: celery -A celery_worker.celery worker --loglevel=INFO --concurrency=2
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      disable: true
+
+  beat:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
+      FLASK_ENV: production
+    command: celery -A celery_worker.celery beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      disable: true
+
+volumes:
+  mysql_data:
+  redis_data:
+  uploads_data:

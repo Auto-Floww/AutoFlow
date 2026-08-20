@@ -1,0 +1,4 @@
+{% extends "errors/base_error.html" %}
+{% block title %}Página não encontrada{% endblock %}{% block icon %}search-x{% endblock %}{% block eyebrow %}Caminho não encontrado{% endblock %}
+{% block heading %}Esta página saiu do fluxo.{% endblock %}{% block message %}O endereço pode ter mudado ou você talvez não tenha acesso a este conteúdo.{% endblock %}
+{% block actions %}<a class="button button-primary" href="/dashboard"><i data-lucide="layout-dashboard"></i>Ir para o dashboard</a><button class="button button-secondary" type="button" data-history-back><i data-lucide="arrow-left"></i>Voltar</button>{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "errors/base_error.html" %}
+{% block title %}Acesso não autorizado{% endblock %}{% block icon %}shield-x{% endblock %}{% block eyebrow %}Acesso restrito{% endblock %}
+{% block heading %}Você não pode abrir esta área.{% endblock %}{% block message %}Seu perfil não possui a permissão necessária. Se precisar, peça acesso a um administrador da empresa.{% endblock %}
+{% block actions %}<button class="button button-primary" type="button" data-history-back><i data-lucide="arrow-left"></i>Voltar</button><a class="button button-secondary" href="/dashboard"><i data-lucide="layout-dashboard"></i>Ir para o dashboard</a>{% endblock %}

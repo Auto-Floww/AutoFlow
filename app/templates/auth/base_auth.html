@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d5f56">
+  <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+  <title>{% block title %}Acessar{% endblock %} · AutoFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="auth-page" data-page="auth">
+  <main class="auth-shell">
+    <section class="auth-panel" aria-label="AutoFlow">
+      <a class="brand brand-light" href="/login" aria-label="AutoFlow">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="brand-name">Auto<span>Flow</span></span>
+      </a>
+      <div class="auth-panel-copy">
+        <span class="eyebrow eyebrow-light"><i data-lucide="sparkles"></i> Atendimento que não para</span>
+        <h1>Transforme conversas em <em>resultados.</em></h1>
+        <p>Automatize seu WhatsApp, qualifique oportunidades e cuide de cada cliente em um só lugar.</p>
+        <div class="auth-benefits">
+          <span><i data-lucide="check"></i> IA conectada ao seu negócio</span>
+          <span><i data-lucide="check"></i> Atendimento humano quando importa</span>
+          <span><i data-lucide="check"></i> Dados protegidos por empresa</span>
+        </div>
+      </div>
+      <div class="auth-quote">
+        <div class="quote-stars" aria-hidden="true">✦ ✦ ✦</div>
+        <blockquote>Atendimento automatizado com dados verificados, memória de contexto e transferência segura para sua equipe.</blockquote>
+        <div><span class="avatar"><i data-lucide="shield-check"></i></span><span><strong>Operação confiável</strong><small>Isolamento de dados por empresa</small></span></div>
+      </div>
+      <span class="auth-orb auth-orb-one"></span><span class="auth-orb auth-orb-two"></span>
+    </section>
+
+    <section class="auth-content">
+      <div class="auth-mobile-brand"><a class="brand" href="/login"><span class="brand-mark"><span></span><span></span><span></span></span><span class="brand-name">Auto<span>Flow</span></span></a></div>
+      <div class="auth-card">
+        {% with flashed = get_flashed_messages(with_categories=true) if get_flashed_messages is defined else [] %}
+          {% for category, message in flashed %}
+            <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else category }}" role="alert"><i data-lucide="circle-alert"></i><span>{{ message }}</span></div>
+          {% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+      <footer class="auth-footer">© {{ current_year|default(2026) }} AutoFlow · <a href="#">Privacidade</a> · <a href="#">Termos</a></footer>
+    </section>
+  </main>
+  <div class="toast-region" aria-live="polite" data-toast-region></div>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% set active_section = 'dashboard' %}
+{% set stats = stats|default(metrics|default({}, true), true) %}
+{% block title %}Dashboard{% endblock %}
+{% block page_id %}dashboard{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <span class="eyebrow"><span class="live-dot"></span> Operação em tempo real</span>
+    <h1>{% if current_user is defined and current_user.name is defined %}Olá, {{ current_user.name.split(' ')[0] }}!{% else %}Olá!{% endif %}</h1>
+    <p>Acompanhe o que está acontecendo na sua empresa hoje.</p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="button button-secondary" data-refresh-dashboard><i data-lucide="refresh-cw"></i><span>Atualizar</span></button>
+  </div>
+</header>
+
+<section class="status-banner {{ 'status-good' if whatsapp_connected|default(false) else 'status-warning' }}">
+  <span class="status-banner-icon"><i data-lucide="{{ 'circle-check' if whatsapp_connected|default(false) else 'triangle-alert' }}"></i></span>
+  <div><strong>{{ 'WhatsApp conectado' if whatsapp_connected|default(false) else 'Conecte seu WhatsApp' }}</strong><p>{{ 'A integração oficial está ativa para receber e enviar mensagens.' if whatsapp_connected|default(false) else 'Conclua a integração para começar a receber e responder mensagens.' }}</p></div>
+  <a class="button button-ghost button-sm" href="/settings/whatsapp">{{ 'Ver integração' if whatsapp_connected|default(false) else 'Configurar agora' }}<i data-lucide="arrow-up-right"></i></a>
+</section>
+
+<section class="metric-grid" aria-label="Indicadores principais">
+  <article class="metric-card">
+    <div class="metric-top"><span class="metric-icon teal"><i data-lucide="messages-square"></i></span><span class="trend neutral">{{ stats.get('conversations_change', 0) }}%</span></div>
+    <div class="metric-value">{{ stats.get('conversations_today', 0) }}</div><p>Conversas hoje</p><small>{{ stats.get('active_now', 0) }} ativas agora</small>
+  </article>
+  <article class="metric-card">
+    <div class="metric-top"><span class="metric-icon mint"><i data-lucide="bot"></i></span><span class="trend neutral">{{ stats.get('ai_change', 0) }}%</span></div>
+    <div class="metric-value">{{ stats.get('ai_resolution_rate', 0) }}<span>%</span></div><p>Resolvidas pela IA</p><small>{{ stats.get('ai_resolved', 0) }} atendimentos</small>
+  </article>
+  <article class="metric-card">
+    <div class="metric-top"><span class="metric-icon violet"><i data-lucide="user-plus"></i></span><span class="trend neutral">{{ stats.get('customers_change', 0) }}%</span></div>
+    <div class="metric-value">{{ stats.get('new_customers', 0) }}</div><p>Novos clientes</p><small>no período atual</small>
+  </article>
+  <article class="metric-card">
+    <div class="metric-top"><span class="metric-icon amber"><i data-lucide="calendar-check-2"></i></span><span class="trend neutral">{{ stats.get('appointments_today', 0) }} hoje</span></div>
+    <div class="metric-value">{{ stats.get('appointments', 0) }}</div><p>Agendamentos</p><small>{{ stats.get('appointments_pending', 0) }} aguardando confirmação</small>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="card chart-card chart-card-main">
+    <header class="card-header"><div><h2>Volume de atendimentos</h2><p>Conversas iniciadas e resolvidas no período</p></div><div class="chart-legend"><span><i class="legend-dot primary"></i>Iniciadas</span><span><i class="legend-dot secondary"></i>Resolvidas</span></div></header>
+    <div class="chart-wrap"><canvas id="conversationsChart" aria-label="Gráfico de volume de atendimentos" role="img"></canvas></div>
+  </article>
+  <article class="card resolution-card">
+    <header class="card-header"><div><h2>Resolução</h2><p>Distribuição dos atendimentos</p></div></header>
+    <div class="donut-wrap"><canvas id="resolutionChart" aria-label="Gráfico de resolução" role="img"></canvas><div class="donut-center"><strong>{{ stats.get('total_resolved', 0) }}</strong><span>resolvidas</span></div></div>
+    <div class="resolution-list">
+      <div><span><i class="legend-dot primary"></i>Resolvidas pela IA</span><strong>{{ stats.get('ai_resolution_rate', 0) }}%</strong></div>
+      <div><span><i class="legend-dot secondary"></i>Atendimento humano</span><strong>{{ (100 - stats.get('ai_resolution_rate', 0)) if stats.get('total_resolved', 0) else 0 }}%</strong></div>
+    </div>
+  </article>
+</section>
+
+<section class="dashboard-lower-grid">
+  <article class="card activity-card">
+    <header class="card-header"><div><h2>Atividade recente</h2><p>Movimentações importantes da operação</p></div><a class="text-link" href="/conversations">Ver conversas<i data-lucide="arrow-right"></i></a></header>
+    <div class="activity-list">
+      {% set recent = recent_activities|default([], true) %}
+      {% for item in recent %}
+      <a class="activity-item" href="{{ item.url|default('#') }}">
+        <span class="activity-icon {{ item.color|default('teal') }}"><i data-lucide="{{ item.icon|default('message-circle') }}"></i></span>
+        <span class="activity-copy"><strong>{{ item.title }}</strong><small>{{ item.description|default('') }}</small></span>
+        <time>{{ item.time_ago|default('Agora') }}</time>
+      </a>
+      {% else %}
+      <div class="empty-state empty-state-compact"><span class="empty-icon"><i data-lucide="activity"></i></span><h3>Sem atividade recente</h3><p>Novos eventos da operação aparecerão aqui.</p></div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card opportunities-card">
+    <header class="card-header"><div><h2>Pipeline comercial</h2><p>Oportunidades em aberto</p></div><a class="text-link" href="/customers/crm">Abrir CRM<i data-lucide="arrow-right"></i></a></header>
+    {% set pipeline = pipeline_stats|default({}, true) %}
+    {% set pipeline_total = pipeline.get('total', 0) %}
+    <div class="pipeline-total"><span>Valor potencial</span><strong>{{ pipeline.get('potential_value_label', 'R$ 0,00') }}</strong><small>{{ pipeline_total }} oportunidades</small></div>
+    <div class="pipeline-bars">
+      <div><span><i class="stage-dot new"></i>Novo</span><div class="mini-progress"><i style="width: {{ pipeline.get('new_percent', 0) }}%"></i></div><strong>{{ pipeline.get('new', 0) }}</strong></div>
+      <div><span><i class="stage-dot interested"></i>Interessado</span><div class="mini-progress"><i style="width: {{ pipeline.get('interested_percent', 0) }}%"></i></div><strong>{{ pipeline.get('interested', 0) }}</strong></div>
+      <div><span><i class="stage-dot qualified"></i>Qualificado</span><div class="mini-progress"><i style="width: {{ pipeline.get('qualified_percent', 0) }}%"></i></div><strong>{{ pipeline.get('qualified', 0) }}</strong></div>
+      <div><span><i class="stage-dot proposal"></i>Proposta</span><div class="mini-progress"><i style="width: {{ pipeline.get('proposal_percent', 0) }}%"></i></div><strong>{{ pipeline.get('proposal', 0) }}</strong></div>
+      <div><span><i class="stage-dot sale"></i>Venda</span><div class="mini-progress"><i style="width: {{ pipeline.get('sale_percent', 0) }}%"></i></div><strong>{{ pipeline.get('sale', 0) }}</strong></div>
+    </div>
+  </article>
+</section>
+
+<section class="card top-products-card">
+  <header class="card-header"><div><h2>Produtos mais consultados</h2><p>Itens que mais geraram interesse nas conversas</p></div><a class="text-link" href="/products">Ver catálogo<i data-lucide="arrow-right"></i></a></header>
+  <div class="table-scroll"><table class="data-table compact-table"><thead><tr><th>Produto</th><th>Categoria</th><th>Consultas</th><th>Conversão</th><th>Estoque</th></tr></thead><tbody>
+    {% set top_products = top_products|default([], true) %}
+    {% for product in top_products %}
+      <tr><td><div class="product-cell"><span class="product-thumb">{% if product.image_url|default('') %}<img src="{{ product.image_url }}" alt="">{% else %}<i data-lucide="package"></i>{% endif %}</span><span><strong>{{ product.name }}</strong><small>{{ product.sku|default('Sem SKU') }}</small></span></div></td><td>{{ product.category|default('Sem categoria') }}</td><td><strong>{{ product.queries|default(0) }}</strong></td><td><span class="trend neutral">{{ product.conversion|default(0) }}%</span></td><td><span class="stock-status {{ 'low' if product.stock|default(0) <= product.minimum_stock|default(0) else 'ok' }}"><i></i>{{ product.stock|default(0) }} un.</span></td></tr>
+    {% else %}
+      <tr class="table-empty-row"><td colspan="5"><div class="empty-state empty-state-compact"><span class="empty-icon"><i data-lucide="package-search"></i></span><h3>Sem consultas de produtos</h3><p>O ranking será criado com dados reais das conversas.</p></div></td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+
+<script type="application/json" id="dashboard-chart-data">{{ chart_data|default({}, true)|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>{% endblock %}

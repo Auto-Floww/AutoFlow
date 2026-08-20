@@ -1,0 +1,4 @@
+{% extends "errors/base_error.html" %}
+{% block title %}Muitas tentativas{% endblock %}{% block icon %}timer-reset{% endblock %}{% block eyebrow %}Limite temporário{% endblock %}
+{% block heading %}Aguarde um pouco.{% endblock %}{% block message %}Recebemos muitas tentativas em sequência. Este limite ajuda a proteger sua conta e será liberado automaticamente.{% endblock %}
+{% block actions %}<button class="button button-primary" type="button" data-page-reload><i data-lucide="refresh-cw"></i>Tentar novamente</button><a class="button button-secondary" href="/login"><i data-lucide="log-in"></i>Voltar ao login</a>{% endblock %}

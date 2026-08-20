@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import empty_state, pagination %}
+{% set active_section = 'customers' %}
+{% set customer_list = customers|default([], true) %}
+{% block title %}Clientes{% endblock %}
+{% block page_id %}customers{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><span class="eyebrow">Relacionamento</span><h1>Clientes</h1><p>Centralize dados, histórico e oportunidades da sua base.</p></div>
+  <div class="page-actions"><a class="button button-secondary" href="/customers/crm"><i data-lucide="panels-top-left"></i>Ver CRM</a><button class="button button-primary" type="button" data-modal-open="customer-modal"><i data-lucide="user-plus"></i>Novo cliente</button></div>
+</header>
+
+<section class="summary-strip">
+  <div><span class="summary-icon teal"><i data-lucide="users"></i></span><span><small>Total de clientes</small><strong>{{ customer_stats.total|default(customer_list|length) if customer_stats is defined else customer_list|length }}</strong></span></div>
+  <div><span class="summary-icon violet"><i data-lucide="user-plus"></i></span><span><small>Novos este mês</small><strong>{{ customer_stats.new_this_month|default(0) if customer_stats is defined else 0 }}</strong></span></div>
+  <div><span class="summary-icon amber"><i data-lucide="star"></i></span><span><small>Oportunidades</small><strong>{{ customer_stats.opportunities|default(0) if customer_stats is defined else 0 }}</strong></span></div>
+  <div><span class="summary-icon mint"><i data-lucide="activity"></i></span><span><small>Ativos nos últimos 30d</small><strong>{{ customer_stats.active_recently|default(0) if customer_stats is defined else 0 }}</strong></span></div>
+</section>
+
+<section class="card data-card">
+  <header class="table-toolbar">
+    <div class="toolbar-search"><i data-lucide="search"></i><input type="search" placeholder="Buscar por nome, telefone ou e-mail" aria-label="Buscar clientes" data-filter-input="customers-table"></div>
+    <div class="toolbar-filters">
+      <label class="select-control"><i data-lucide="filter"></i><select data-table-filter="stage"><option value="">Todas as etapas</option><option value="new">Novo</option><option value="interested">Interessado</option><option value="qualified">Qualificado</option><option value="proposal">Proposta</option><option value="sale">Venda</option><option value="lost">Perdido</option></select></label>
+      <label class="select-control"><select data-table-filter="status"><option value="">Todos os status</option><option value="active">Ativo</option><option value="inactive">Inativo</option></select></label>
+    </div>
+  </header>
+  <div class="table-scroll">
+    <table class="data-table" id="customers-table" data-filter-list>
+      <thead><tr><th>Cliente</th><th>Contato</th><th>Tags</th><th>Etapa</th><th>Última interação</th><th><span class="sr-only">Ações</span></th></tr></thead>
+      <tbody>
+      {% for customer in customer_list %}
+        {% set stage_raw = customer.stage.value if customer.stage is defined and customer.stage.value is defined else customer.stage|default('NEW') %}
+        {% set stage = stage_raw|string|lower %}
+        <tr data-filter-item data-search="{{ customer.name }} {{ customer.phone|default('') }} {{ customer.email|default('') }}" data-stage="{{ stage }}" data-status="{{ 'active' if customer.active|default(false) else 'inactive' }}">
+          <td><a class="person-cell" href="/customers/{{ customer.id }}"><span class="avatar avatar-md avatar-color-{{ loop.index0 % 5 }}">{{ customer.name|first|upper }}</span><span><strong>{{ customer.name }}</strong><small>{{ customer.organization|default('Pessoa física', true) }}</small></span></a></td>
+          <td><div class="stacked-cell"><span>{{ customer.phone|default('Não informado') }}</span><small>{{ customer.email|default('Sem e-mail', true) }}</small></div></td>
+          <td><div class="tag-list inline-tags">{% for tag in (customer.tags|default([], true))[:2] %}<span class="tag tag-soft">{{ tag.name|default(tag) }}</span>{% else %}<span class="muted-small">—</span>{% endfor %}{% if customer.tags|default([], true)|length > 2 %}<span class="tag tag-more">+{{ customer.tags|length - 2 }}</span>{% endif %}</div></td>
+          <td><span class="stage-badge stage-{{ stage }}"><i></i>{{ {'new':'Novo','interested':'Interessado','qualified':'Qualificado','proposal':'Proposta','sale':'Venda','lost':'Perdido'}.get(stage, stage|title) }}</span></td>
+          <td><div class="stacked-cell"><span>{{ customer.last_interaction_label|default('Sem interação') }}</span><small>{{ customer.conversations_count|default(0) }} conversa{{ 's' if customer.conversations_count|default(0) != 1 else '' }}</small></div></td>
+          <td class="actions-cell"><div class="dropdown"><button type="button" class="icon-button" data-dropdown-trigger="customer-{{ customer.id }}" aria-expanded="false" aria-label="Ações para {{ customer.name }}"><i data-lucide="ellipsis"></i></button><div class="dropdown-menu align-right" data-dropdown="customer-{{ customer.id }}" hidden><a href="/customers/{{ customer.id }}"><i data-lucide="eye"></i>Ver perfil</a><button type="button" data-modal-open="customer-modal" data-edit-customer='{{ {"id": customer.id, "name": customer.name, "phone": customer.phone|default(""), "email": customer.email|default(""), "organization": customer.organization|default(""), "notes": customer.notes|default("")}|tojson }}'><i data-lucide="pencil"></i>Editar</button><a href="/conversations?customer_id={{ customer.id }}"><i data-lucide="message-circle"></i>Ver conversas</a><button type="button" class="danger-text" data-confirm-action="/customers/{{ customer.id }}/delete" data-confirm-title="Excluir cliente?"><i data-lucide="trash-2"></i>Excluir</button></div></div></td>
+        </tr>
+      {% else %}
+        <tr class="table-empty-row"><td colspan="6">{{ empty_state('users', 'Sua base está pronta para crescer', 'Cadastre o primeiro cliente ou aguarde uma nova conversa pelo WhatsApp.', 'Cadastrar cliente', 'customer-modal') }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="filter-empty" data-filter-empty hidden><i data-lucide="user-round-x"></i><strong>Nenhum cliente encontrado</strong><span>Ajuste os filtros ou tente outra busca.</span></div>
+  </div>
+  <footer class="table-footer"><span>{{ customer_list|length }} cliente{{ 's' if customer_list|length != 1 else '' }} nesta página</span>{{ pagination(customer_pagination|default(none), '/customers') }}</footer>
+</section>
+
+<div class="modal" id="customer-modal" data-modal hidden>
+  <button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar"></button>
+  <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-modal-title">
+    <header class="modal-header"><div><h2 id="customer-modal-title" data-create-title="Novo cliente" data-edit-title="Editar cliente">Novo cliente</h2><p>Os dados ficam disponíveis para sua equipe e para a IA.</p></div><button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <form method="post" action="/customers" class="modal-form" data-entity-form="customer" data-ajax-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><input type="hidden" name="id" value="">
+      <div class="modal-body form-stack">
+        <div class="form-grid form-grid-2"><div class="field"><label for="customer-name">Nome completo <em>*</em></label><input id="customer-name" name="name" placeholder="Nome do cliente" required></div><div class="field"><label for="customer-company">Empresa</label><input id="customer-company" name="organization" placeholder="Empresa do cliente"></div></div>
+        <div class="form-grid form-grid-2"><div class="field"><label for="customer-phone">Telefone <em>*</em></label><input id="customer-phone" name="phone" type="tel" placeholder="(11) 99999-9999" data-phone required></div><div class="field"><label for="customer-email">E-mail</label><input id="customer-email" name="email" type="email" placeholder="ana@empresa.com"></div></div>
+        <div class="field"><label for="customer-stage">Etapa do CRM</label><select id="customer-stage" name="stage"><option value="NEW">Novo</option><option value="INTERESTED">Interessado</option><option value="QUALIFIED">Qualificado</option><option value="PROPOSAL">Proposta</option><option value="SALE">Venda</option><option value="LOST">Perdido</option></select></div>
+        <div class="field"><label for="customer-notes">Observações</label><textarea id="customer-notes" name="notes" rows="4" placeholder="Preferências, contexto ou informações importantes..."></textarea><small class="field-hint">Nunca inclua dados sensíveis desnecessários.</small></div>
+      </div>
+      <footer class="modal-footer"><button class="button button-secondary" type="button" data-modal-close>Cancelar</button><button class="button button-primary" type="submit"><i data-lucide="check"></i>Salvar cliente</button></footer>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active_section = 'crm' %}
+{% set pipeline = pipeline|default({}, true) %}
+{% set stages = [
+  ('NEW', 'Novo', 'new', 'circle-plus'),
+  ('INTERESTED', 'Interessado', 'interested', 'heart-handshake'),
+  ('QUALIFIED', 'Qualificado', 'qualified', 'badge-check'),
+  ('PROPOSAL', 'Proposta', 'proposal', 'file-signature'),
+  ('SALE', 'Venda', 'sale', 'trophy'),
+  ('LOST', 'Perdido', 'lost', 'circle-x')
+] %}
+{% block title %}CRM{% endblock %}
+{% block page_id %}crm{% endblock %}
+{% block body_class %}kanban-page{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><span class="eyebrow">Pipeline comercial</span><h1>CRM</h1><p>Arraste as oportunidades e acompanhe cada etapa da venda.</p></div>
+  <div class="page-actions"><a class="button button-secondary" href="/customers"><i data-lucide="list"></i>Lista de clientes</a><button class="button button-primary" type="button" data-modal-open="opportunity-modal"><i data-lucide="plus"></i>Nova oportunidade</button></div>
+</header>
+
+<section class="crm-summary">
+  <div><small>Pipeline total</small><strong>{{ crm_stats.total_value_label|default('R$ 0,00') if crm_stats is defined else 'R$ 0,00' }}</strong><span>{{ crm_stats.total_count|default(0) if crm_stats is defined else 0 }} oportunidades</span></div>
+  <div><small>Taxa de conversão</small><strong>{{ crm_stats.conversion_rate|default(0) if crm_stats is defined else 0 }}%</strong><span>últimos 30 dias</span></div>
+  <div><small>Ticket médio</small><strong>{{ crm_stats.average_ticket_label|default('R$ 0,00') if crm_stats is defined else 'R$ 0,00' }}</strong><span>negócios ganhos</span></div>
+  <div class="crm-toolbar"><div class="toolbar-search"><i data-lucide="search"></i><input type="search" placeholder="Buscar oportunidade" aria-label="Buscar oportunidade" data-kanban-search></div></div>
+</section>
+
+<div class="kanban-help"><i data-lucide="mouse-pointer-2"></i>Arraste um card para atualizar sua etapa automaticamente.</div>
+<section class="kanban-board" data-kanban data-stage-url-template="/customers/{id}/stage">
+  {% for stage_value, stage_label, stage_class, stage_icon in stages %}
+    {% set cards = pipeline.get(stage_value, pipeline.get(stage_value|lower, [])) %}
+    <article class="kanban-column stage-column-{{ stage_class }}" data-kanban-column="{{ stage_value }}">
+      <header class="kanban-column-head"><div><span class="stage-symbol"><i data-lucide="{{ stage_icon }}"></i></span><strong>{{ stage_label }}</strong><span class="column-count" data-column-count>{{ cards|length }}</span></div><button type="button" class="icon-button icon-button-xs" data-modal-open="opportunity-modal" data-default-stage="{{ stage_value }}" aria-label="Adicionar em {{ stage_label }}"><i data-lucide="plus"></i></button></header>
+      <div class="kanban-dropzone" data-kanban-dropzone>
+        {% for opportunity in cards %}
+          {% set client = opportunity.customer|default(opportunity, true) %}
+          <article class="kanban-card" draggable="true" tabindex="0" data-kanban-card data-id="{{ client.id }}" data-search="{{ client.name }} {{ client.company|default('') }}">
+            <div class="kanban-card-top"><div class="person-cell"><span class="avatar avatar-sm avatar-color-{{ loop.index0 % 5 }}">{{ client.name|first|upper }}</span><span><strong>{{ client.name }}</strong><small>{{ client.company|default('Pessoa física', true) }}</small></span></div><div class="dropdown"><button class="icon-button icon-button-xs" type="button" data-dropdown-trigger="opp-{{ stage_value }}-{{ client.id }}" aria-expanded="false" aria-label="Ações"><i data-lucide="ellipsis"></i></button><div class="dropdown-menu align-right" data-dropdown="opp-{{ stage_value }}-{{ client.id }}" hidden><a href="/customers/{{ client.id }}"><i data-lucide="eye"></i>Ver cliente</a><button type="button" data-edit-opportunity><i data-lucide="pencil"></i>Editar</button><button type="button" class="danger-text" data-confirm-action="/customers/{{ client.id }}/opportunity"><i data-lucide="trash-2"></i>Remover</button></div></div></div>
+            {% if client.opportunity_title|default('') %}<p class="opportunity-title">{{ client.opportunity_title }}</p>{% endif %}
+            <div class="kanban-tags">{% for tag in (client.tags|default([], true))[:2] %}<span class="tag tag-soft">{{ tag.name|default(tag) }}</span>{% endfor %}</div>
+            <div class="kanban-card-value"><span><i data-lucide="circle-dollar-sign"></i>Valor estimado</span><strong>{{ client.opportunity_value_label|default('Não informado') }}</strong></div>
+            <footer><span title="Última interação"><i data-lucide="message-circle"></i>{{ client.last_interaction_label|default('Sem interação') }}</span>{% if client.next_action_label|default('') %}<span class="next-action"><i data-lucide="calendar-clock"></i>{{ client.next_action_label }}</span>{% endif %}</footer>
+          </article>
+        {% endfor %}
+        <div class="kanban-column-empty" data-column-empty {{ '' if not cards else 'hidden' }}><i data-lucide="plus-circle"></i><span>Arraste uma oportunidade</span></div>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+
+<div class="modal" id="opportunity-modal" data-modal hidden><button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar"></button><section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="opportunity-title"><header class="modal-header"><div><h2 id="opportunity-title">Nova oportunidade</h2><p>Adicione um cliente ao pipeline comercial.</p></div><button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button></header><form class="modal-form" method="post" action="/customers" data-ajax-form><input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}"><div class="modal-body form-stack"><div class="field"><label for="opp-customer">Cliente <em>*</em></label><select id="opp-customer" name="customer_id" required><option value="">Selecione um cliente</option>{% for client in available_customers|default([], true) %}<option value="{{ client.id }}">{{ client.name }} · {{ client.phone|default('') }}</option>{% endfor %}</select></div><div class="field"><label for="opp-title-input">Oportunidade</label><input id="opp-title-input" name="opportunity_title" placeholder="Ex.: Pedido de coleção completa"></div><div class="form-grid form-grid-2"><div class="field"><label for="opp-value">Valor estimado</label><div class="input-prefix"><span>R$</span><input id="opp-value" name="opportunity_value" inputmode="decimal" placeholder="0,00" data-currency></div></div><div class="field"><label for="opp-stage">Etapa</label><select id="opp-stage" name="stage" data-opportunity-stage>{% for value, label, _, _ in stages %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div></div><div class="field"><label for="opp-notes">Próximo passo</label><input id="opp-notes" name="next_action" placeholder="Ex.: Enviar proposta amanhã"></div></div><footer class="modal-footer"><button type="button" class="button button-secondary" data-modal-close>Cancelar</button><button type="submit" class="button button-primary">Criar oportunidade</button></footer></form></section></div>
+{% endblock %}

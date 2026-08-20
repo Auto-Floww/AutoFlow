@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Não foi possível concluir{% endblock %} · AutoFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="error-page" data-page="error">
+  <main class="error-shell">
+    <a class="brand" href="/dashboard"><span class="brand-mark"><span></span><span></span><span></span></span><span class="brand-name">Auto<span>Flow</span></span></a>
+    <div class="error-art error-art-server"><i data-lucide="{% block icon %}workflow{% endblock %}"></i></div>
+    <span class="eyebrow">{% block eyebrow %}Não foi possível concluir{% endblock %}</span>
+    <h1>{% block heading %}O fluxo encontrou um obstáculo.{% endblock %}</h1>
+    <p>{% block message %}Tente novamente em instantes.{% endblock %}</p>
+    <div>{% block actions %}<button class="button button-primary" type="button" data-page-reload><i data-lucide="refresh-cw"></i>Tentar novamente</button><a class="button button-secondary" href="/dashboard"><i data-lucide="layout-dashboard"></i>Ir para o dashboard</a>{% endblock %}</div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
