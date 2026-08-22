@@ -347,6 +347,19 @@ class WhatsAppService:
             "GET", f"instance/connect/{urllib.parse.quote(instance_name)}"
         )
 
+    def create_instance(self, instance_name: str) -> dict[str, Any]:
+        """Provision a Baileys instance and ask Evolution for its first QR Code."""
+
+        return self._request(
+            "POST",
+            "instance/create",
+            {
+                "instanceName": self.validate_instance_name(instance_name),
+                "integration": "WHATSAPP-BAILEYS",
+                "qrcode": True,
+            },
+        )
+
     def get_instance_state(self, instance_name: str) -> str:
         """Return the normalized connection state from Evolution."""
 

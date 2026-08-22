@@ -190,13 +190,13 @@ isolados pela empresa; o modelo nunca recebe credenciais nem executa SQL.
 ### WhatsApp via Evolution API
 
 Configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e
-`EVOLUTION_WEBHOOK_URL` no `.env`. No painel da Evolution:
+`EVOLUTION_WEBHOOK_URL` no `.env`. No AutoFlow:
 
-1. crie uma instância com o mesmo nome salvo no AutoFlow;
-2. configure o callback `/webhooks/evolution`;
-3. habilite o evento `MESSAGES_UPSERT`;
-4. abra **Configurações → WhatsApp** no AutoFlow;
-5. gere e leia o QR Code pelo celular.
+1. abra **Configurações → WhatsApp**;
+2. salve um nome exclusivo para a instância;
+3. gere o QR Code — se necessário, o AutoFlow cria a instância Evolution;
+4. leia o QR Code pelo celular;
+5. configure o callback `/webhooks/evolution` e habilite `MESSAGES_UPSERT`.
 
 O endpoint persiste/idempotentiza o evento e enfileira o processamento. As
 cotas por empresa e remetente são verificadas transacionalmente antes de criar

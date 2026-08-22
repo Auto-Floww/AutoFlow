@@ -21,7 +21,15 @@ class GenerateWhatsAppQrCodeService:
         if integration is None:
             raise ValidationError("Salve o nome da instancia antes de gerar o QR Code")
 
-        result = self.evolution_service.request_qr_code(integration.instance_name)
+        try:
+            result = self.evolution_service.request_qr_code(integration.instance_name)
+        except ExternalServiceError as exc:
+            if exc.external_status != 404:
+                raise
+            # A configuracao do AutoFlow pode ser salva antes de a instancia
+            # existir na Evolution. Provisione-a no primeiro pedido de QR Code
+            # para que esse estado esperado nao seja exposto como um 502.
+            result = self.evolution_service.create_instance(integration.instance_name)
         qrcode = result.get("qrcode") if isinstance(result.get("qrcode"), dict) else {}
         value = result.get("base64") or qrcode.get("base64")
         pairing_code = result.get("pairingCode") or qrcode.get("pairingCode")

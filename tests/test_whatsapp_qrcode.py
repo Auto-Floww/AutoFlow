@@ -101,6 +101,79 @@ def test_service_normalizes_png_data_url(app, company_factory, monkeypatch):
     assert result["pairing_code"] == "1234-5678"
 
 
+def test_service_creates_missing_instance_before_returning_qrcode(
+    app, company_factory, monkeypatch
+):
+    company = company_factory()
+    _integration(company.id, "loja-nova")
+    encoded = base64.b64encode(b"\x89PNG\r\n\x1a\nqr-data").decode()
+    evolution_service = WhatsAppService(api_url="http://evolution", api_key="test-key")
+    calls = []
+
+    def missing_instance(instance_name):
+        calls.append(("connect", instance_name))
+        raise ExternalServiceError("Instance not found", status=404)
+
+    def create_instance(instance_name):
+        calls.append(("create", instance_name))
+        return {"qrcode": {"base64": encoded}}
+
+    monkeypatch.setattr(evolution_service, "request_qr_code", missing_instance)
+    monkeypatch.setattr(evolution_service, "create_instance", create_instance)
+
+    result = GenerateWhatsAppQrCodeService(evolution_service).execute(company.id)
+
+    assert result["qr_code"] == f"data:image/png;base64,{encoded}"
+    assert calls == [("connect", "loja-nova"), ("create", "loja-nova")]
+
+
+def test_service_does_not_create_instance_for_non_404_error(
+    app, company_factory, monkeypatch
+):
+    company = company_factory()
+    _integration(company.id, "loja-indisponivel")
+    evolution_service = WhatsAppService(api_url="http://evolution", api_key="test-key")
+    created = []
+
+    def unavailable(_instance_name):
+        raise ExternalServiceError("temporariamente indisponivel", status=503)
+
+    monkeypatch.setattr(evolution_service, "request_qr_code", unavailable)
+    monkeypatch.setattr(
+        evolution_service, "create_instance", lambda instance_name: created.append(instance_name)
+    )
+
+    with pytest.raises(ExternalServiceError, match="temporariamente indisponivel"):
+        GenerateWhatsAppQrCodeService(evolution_service).execute(company.id)
+
+    assert created == []
+
+
+def test_whatsapp_service_creates_baileys_instance(monkeypatch):
+    evolution_service = WhatsAppService(api_url="http://evolution", api_key="test-key")
+    requests = []
+
+    def fake_request(method, path, payload=None, **_kwargs):
+        requests.append((method, path, payload))
+        return {"instance": {"instanceName": "loja-create"}}
+
+    monkeypatch.setattr(evolution_service, "_request", fake_request)
+
+    evolution_service.create_instance("loja-create")
+
+    assert requests == [
+        (
+            "POST",
+            "instance/create",
+            {
+                "instanceName": "loja-create",
+                "integration": "WHATSAPP-BAILEYS",
+                "qrcode": True,
+            },
+        )
+    ]
+
+
 def test_service_rejects_non_png_qrcode(app, company_factory, monkeypatch):
     company = company_factory()
     _integration(company.id, "loja-invalid")
