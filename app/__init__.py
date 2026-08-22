@@ -4,9 +4,18 @@ import hmac
 import logging
 import os
 from logging.config import dictConfig
+from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 from flask_login import current_user
 from flask_wtf.csrf import CSRFError
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -188,6 +197,11 @@ def _wants_json() -> bool:
 def _register_handlers(app: Flask) -> None:
     from app.services.exceptions import DomainError
 
+    landing_root = Path(app.root_path).parent
+
+    def landing_file(filename: str):
+        return send_from_directory(landing_root, filename)
+
     @app.errorhandler(DomainError)
     def handle_domain_error(error):
         if _wants_json():
@@ -200,7 +214,39 @@ def _register_handlers(app: Flask) -> None:
     def root():
         if current_user.is_authenticated:
             return redirect(url_for("dashboard.index"))
+        return landing_file("index.html")
+
+    @app.get("/landing")
+    def landing():
+        return landing_file("index.html")
+
+    @app.get("/index.html")
+    def landing_index_alias():
+        return redirect(url_for("root"))
+
+    @app.get("/login.html")
+    def legacy_login_alias():
         return redirect(url_for("auth.login"))
+
+    @app.get("/dashboard.html")
+    def legacy_dashboard_alias():
+        return redirect(url_for("dashboard.index"))
+
+    @app.get("/style.css")
+    def landing_styles():
+        return landing_file("style.css")
+
+    @app.get("/script.js")
+    def landing_scripts():
+        return landing_file("script.js")
+
+    @app.get("/assets/<path:filename>")
+    def landing_assets(filename: str):
+        return send_from_directory(landing_root / "assets", filename)
+
+    @app.get("/js/<path:filename>")
+    def landing_modules(filename: str):
+        return send_from_directory(landing_root / "js", filename)
 
     @app.get("/health")
     @limiter.exempt

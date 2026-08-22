@@ -127,7 +127,7 @@ Variáveis principais:
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | Credenciais SMTP; mantenha-as somente no backend |
 | `MAIL_FROM` | Remetente dos e-mails transacionais |
 | `APP_URL` | URL pública do painel, sem barra final |
-| `LANDING_PAGE_URL` | URL da Landing Page externa, quando fornecida |
+| `LANDING_PAGE_URL` | URL de uma Landing Page externa opcional; por padrão, a página integrada responde em `/` |
 | `CORS_ORIGINS` | Origens permitidas, separadas por vírgula |
 
 Nunca exponha as chaves Groq, Evolution, banco, criptografia ou `SECRET_KEY` em templates,

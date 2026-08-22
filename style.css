@@ -2595,9 +2595,16 @@ svg rect.mask.target{
     gap: 0.2rem;
   }
   .landing-topbar .topbar-login{
-    display:none;
+    display:inline-flex;
+    min-height:44px;
+    align-items:center;
+    padding:0.5rem 0.65rem;
+    font-size:0.68rem;
   }
   .landing-topbar .topbar-cta{
+    min-height:44px;
+    display:inline-flex;
+    align-items:center;
     padding: 0.5rem 0.65rem;
     font-size: 0.68rem;
   }
