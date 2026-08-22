@@ -1,7 +1,6 @@
 """Regressões de isolamento, sessão e autenticação de integrações."""
 
 import hashlib
-import hmac
 import json
 import secrets
 from datetime import timedelta
@@ -12,30 +11,6 @@ from app import create_app
 from app.extensions import db
 from app.models import CompanyMember, Conversation, Customer, Message, WhatsAppIntegration
 from app.models.base import utcnow
-from app.security import encrypt_secret
-
-
-def _signed(secret: str, raw: bytes) -> str:
-    return "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-
-
-def _change(phone_number_id: str, external_id: str) -> dict:
-    return {
-        "field": "messages",
-        "value": {
-            "metadata": {"phone_number_id": phone_number_id},
-            "contacts": [{"wa_id": "5511999990000", "profile": {"name": "Cliente"}}],
-            "messages": [
-                {
-                    "from": "5511999990000",
-                    "id": external_id,
-                    "timestamp": "1893459600",
-                    "type": "text",
-                    "text": {"body": "Olá"},
-                }
-            ],
-        },
-    }
 
 
 def test_disabled_membership_revokes_an_existing_session(
@@ -82,7 +57,7 @@ def test_password_change_invalidates_previously_issued_session(
 
 
 def test_one_tenant_secret_cannot_authorize_another_tenant_change(
-    client, company_factory
+    client, app, company_factory
 ):
     company_a = company_factory()
     company_b = company_factory()
@@ -90,35 +65,42 @@ def test_one_tenant_secret_cannot_authorize_another_tenant_change(
         [
             WhatsAppIntegration(
                 company_id=company_a.id,
-                phone_number_id="phone-a",
-                app_secret_encrypted=encrypt_secret("secret-a"),
+                instance_name="phone-a",
                 status="CONNECTED",
                 is_active=True,
             ),
             WhatsAppIntegration(
                 company_id=company_b.id,
-                phone_number_id="phone-b",
-                app_secret_encrypted=encrypt_secret("secret-b"),
+                instance_name="phone-b",
                 status="CONNECTED",
                 is_active=True,
             ),
         ]
     )
     db.session.commit()
+    app.config["EVOLUTION_API_KEY"] = "installation-key"
     body = {
-        "object": "whatsapp_business_account",
-        "entry": [{"id": "waba", "changes": [_change("phone-a", "a-1"), _change("phone-b", "b-1")]}],
+        "event": "messages.upsert",
+        "instance": "phone-b",
+        "apikey": "invalid-installation-key",
+        "data": {
+            "key": {
+                "remoteJid": "5511999990001@s.whatsapp.net",
+                "fromMe": False,
+                "id": "b-1",
+            },
+            "message": {"conversation": "Nao autorizada"},
+        },
     }
     raw = json.dumps(body, separators=(",", ":")).encode()
 
     response = client.post(
-        "/webhooks/whatsapp",
+        "/webhooks/evolution",
         data=raw,
         content_type="application/json",
-        headers={"X-Hub-Signature-256": _signed("secret-a", raw)},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 401
     assert Message.query.count() == 0
 
 

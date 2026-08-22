@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
 class AISettings(db.Model, TenantMixin, TimestampMixin, ReprMixin):
@@ -36,22 +36,16 @@ class AISettings(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class WhatsAppIntegration(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class WhatsAppIntegration(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "whatsapp_integrations"
 
     id = db.Column(db.Integer, primary_key=True)
-    display_phone_number = db.Column(db.String(32))
-    phone_number_id = db.Column(db.String(100), nullable=False, unique=True, index=True)
-    business_account_id = db.Column(db.String(100), index=True)
-    # Credentials are intentionally not exposed through any serializer. A deployment
-    # should inject them from a secret manager; these columns accept ciphertext only.
-    access_token_encrypted = db.Column(db.Text)
-    app_secret_encrypted = db.Column(db.Text)
+    display_name = db.Column(db.String(100))
+    instance_name = db.Column(db.String(100), nullable=False, unique=True, index=True)
     status = db.Column(db.String(24), nullable=False, default="PENDING", index=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
     last_webhook_at = db.Column(db.DateTime)
     last_error = db.Column(db.Text)
-    metadata_json = db.Column("metadata", db.JSON, nullable=False, default=dict)
 
     __table_args__ = (
         db.UniqueConstraint("company_id", name="uq_whatsapp_company"),

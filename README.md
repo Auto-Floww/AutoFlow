@@ -15,12 +15,12 @@ puro.
 
 ## Arquitetura
 
-- Python 3.12, Flask e Blueprints, usando application factory;
+- Python 3.12, Flask, Blueprints e Controllers em classes, usando application factory;
 - SQLAlchemy e Flask-Migrate/Alembic sobre MySQL 8;
 - Flask-Login, CSRF, CORS, rate limiting e isolamento por `company_id`;
 - templates Jinja2 e assets HTML5/CSS3/JavaScript ES6+;
 - Groq API para IA e tool calling, sem acesso direto da IA ao banco;
-- WhatsApp Cloud API oficial da Meta;
+- Evolution API v2 encapsulada em Service externo e executada em stack Docker isolada;
 - Celery, Redis e transactional outbox para processamento assíncrono durável;
 - Pytest com SQLite em memória para testes isolados;
 - Gunicorn e Docker Compose para execução em contêineres.
@@ -32,13 +32,46 @@ demorado ao worker:
 WhatsApp -> Flask webhook -> banco + outbox -> Celery -> Groq/tools -> WhatsApp
 ```
 
+Para os casos de uso novos, a separação adotada é:
+
+```text
+backend/controllers/   # classes que traduzem HTTP e chamam um Service
+backend/services/      # uma classe por ação/caso de uso
+backend/models/        # exportação das entidades de domínio
+backend/repositories/  # apenas consultas especiais; não duplica CRUD simples
+frontend/              # documentação e fronteira do frontend
+app/models/            # Models SQLAlchemy e persistência convencional
+app/templates/         # páginas Jinja2
+app/static/            # JavaScript e CSS que consomem as APIs
+```
+
+A geração do QR Code é a implementação de referência: o frontend chama
+`POST /settings/whatsapp/qrcode`; `WhatsAppQrCodeController` interpreta a
+requisição; `GenerateWhatsAppQrCodeService` executa somente esse caso de uso;
+e `WhatsAppService` encapsula a comunicação HTTP com a Evolution API. Como o
+acesso ao banco é uma consulta simples por empresa, não foi criado um
+Repository redundante.
+
+## Funcionalidades Implementadas
+
+1. Cadastrar cliente
+2. Listar clientes
+3. Atualizar cliente
+4. Arquivar cliente
+5. Cadastrar produto
+6. Listar produtos
+7. Atualizar produto e suas variações
+8. Arquivar produto
+9. Registrar movimentação de estoque
+10. Consultar histórico de movimentações de estoque
+
 ## Requisitos
 
 - Python 3.12 ou superior;
 - MySQL 8 ou superior;
 - Redis 7 ou superior;
 - uma conta e chave da Groq;
-- um aplicativo da Meta com WhatsApp Cloud API, para integração real;
+- Evolution API v2 acessível pelo backend, localmente ou em Docker;
 - Docker com Compose v2, opcional para subir toda a infraestrutura.
 
 ## Instalação local
@@ -86,12 +119,10 @@ Variáveis principais:
 | `GROQ_API_KEY` | Chave secreta usada somente pelo backend |
 | `GROQ_MODEL` | Modelo habilitado na conta Groq |
 | `GROQ_API_URL` | Base compatível com OpenAI da Groq, normalmente `https://api.groq.com/openai/v1` |
-| `WHATSAPP_ACCESS_TOKEN` | Token da WhatsApp Cloud API |
-| `WHATSAPP_PHONE_NUMBER_ID` | ID do número remetente na Meta |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | ID da conta WhatsApp Business |
-| `WHATSAPP_VERIFY_TOKEN` | Valor definido por você para validar o webhook |
-| `WHATSAPP_APP_SECRET` | App secret usado para verificar a assinatura dos POSTs |
-| `META_GRAPH_VERSION` | Versão da Graph API usada pelo serviço |
+| `EVOLUTION_API_URL` | URL interna da Evolution API; no Compose use `http://evolution-api:8080` |
+| `EVOLUTION_API_KEY` | Chave enviada somente pelo backend no cabeçalho `apikey` |
+| `EVOLUTION_REQUEST_TIMEOUT` | Timeout das chamadas HTTP para a Evolution API |
+| `EVOLUTION_WEBHOOK_URL` | Callback do AutoFlow acessível pelo contêiner da Evolution |
 | `SMTP_HOST`, `SMTP_PORT` | Servidor SMTP usado pelo worker para recuperação de senha |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | Credenciais SMTP; mantenha-as somente no backend |
 | `MAIL_FROM` | Remetente dos e-mails transacionais |
@@ -99,7 +130,7 @@ Variáveis principais:
 | `LANDING_PAGE_URL` | URL da Landing Page externa, quando fornecida |
 | `CORS_ORIGINS` | Origens permitidas, separadas por vírgula |
 
-Nunca exponha as chaves Groq, Meta, banco, criptografia ou `SECRET_KEY` em templates,
+Nunca exponha as chaves Groq, Evolution, banco, criptografia ou `SECRET_KEY` em templates,
 JavaScript, logs ou imagens Docker.
 
 Gere uma chave Fernet para `CREDENTIAL_ENCRYPTION_KEY` com:
@@ -156,23 +187,28 @@ Crie uma chave no console da Groq e defina `GROQ_API_KEY` e `GROQ_MODEL`. A
 aplicação chama a API exclusivamente no backend. As tools consultam dados já
 isolados pela empresa; o modelo nunca recebe credenciais nem executa SQL.
 
-### WhatsApp Cloud API
+### WhatsApp via Evolution API
 
-No painel da Meta:
+Configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e
+`EVOLUTION_WEBHOOK_URL` no `.env`. No painel da Evolution:
 
-1. adicione o produto WhatsApp ao aplicativo;
-2. configure o número, o access token e os IDs no `.env`;
-3. escolha um `WHATSAPP_VERIFY_TOKEN` secreto;
-4. publique `https://seu-dominio/webhooks/whatsapp` como callback;
-5. assine os campos de mensagens e teste a verificação `GET`;
-6. configure `WHATSAPP_APP_SECRET` para validar `X-Hub-Signature-256` nos POSTs.
+1. crie uma instância com o mesmo nome salvo no AutoFlow;
+2. configure o callback `/webhooks/evolution`;
+3. habilite o evento `MESSAGES_UPSERT`;
+4. abra **Configurações → WhatsApp** no AutoFlow;
+5. gere e leia o QR Code pelo celular.
 
 O endpoint persiste/idempotentiza o evento e enfileira o processamento. As
 cotas por empresa e remetente são verificadas transacionalmente antes de criar
 dados ou consumir capacidade da IA; excedentes recebem HTTP `429` com
-`Retry-After`. Em
-desenvolvimento, a Meta precisa alcançar uma URL HTTPS pública; use um túnel
-somente em ambiente controlado.
+`Retry-After`. Em desenvolvimento com Docker, o callback pode usar
+`http://host.docker.internal:5000/webhooks/evolution`.
+
+Para executar a Evolution separadamente, copie `.env.evolution.example` para
+`.env.evolution` e use `docker compose -f docker-compose.evolution.yml up -d`.
+No Compose combinado deste repositório, a aplicação usa automaticamente
+`http://evolution-api:8080`; `http://localhost:8080` é a URL a ser aberta no
+host e não deve ser usada entre contêineres.
 
 ## Migrações
 
@@ -240,6 +276,46 @@ docker compose down
 Não use `docker compose down -v` em um ambiente com dados que devam ser
 preservados.
 
+### Evolution API v2 (opcional)
+
+O AutoFlow usa a Evolution API v2 para enviar e receber mensagens do WhatsApp.
+Para subir a Evolution ao lado do SaaS, há uma stack isolada em
+`docker-compose.evolution.yml`, com PostgreSQL, Redis e volumes próprios. Isso
+evita compartilhar sessões, cache ou dados de mensageria com os serviços do
+AutoFlow.
+
+1. copie o arquivo de exemplo e substitua **todos** os segredos e URIs de exemplo:
+
+   ```powershell
+   Copy-Item .env.evolution.example .env.evolution
+   ```
+
+2. confira que `DATABASE_CONNECTION_URI` e `CACHE_REDIS_URI` possuem as mesmas
+   senhas definidas no arquivo, codificadas para URL quando contiverem caracteres
+   reservados (`@`, `:`, `/`, `?`, `#` etc.);
+3. inicie a API juntamente com a infraestrutura principal:
+
+   ```powershell
+   docker compose -f docker-compose.yml -f docker-compose.evolution.yml up -d --build
+   docker compose -f docker-compose.yml -f docker-compose.evolution.yml ps
+   ```
+
+Por padrão, a Evolution fica disponível somente em
+`http://127.0.0.1:8080`. Para expô-la atrás de um proxy HTTPS, mantenha esse
+bind local e configure a URL pública em `SERVER_URL` no `.env.evolution`; o
+proxy deve restringir o acesso e não registrar o header `apikey`.
+
+A imagem está fixada em `evoapicloud/evolution-api:v2.3.6`, a versão v2 mais
+recente antes da exigência de ativação introduzida na v2.4. O endpoint e a
+chave configurados em `.env` são usados pelo backend. Ao executar o Compose
+combinado, o backend acessa a API por `http://evolution-api:8080` e a Evolution
+entrega eventos em `http://web:5000/webhooks/evolution`; as URLs `localhost`
+continuam sendo usadas somente pelo navegador e por processos executados no
+host. Configure o evento `MESSAGES_UPSERT` na instância.
+
+Referências: [instalação Docker da Evolution API v2](https://github.com/evolution-foundation/docs-evolution/blob/main/v2/en/install/docker.mdx)
+e [release v2.3.6](https://github.com/evolution-foundation/evolution-api/releases/tag/2.3.6).
+
 ## Testes
 
 A configuração `testing` usa a factory `create_app('testing')`, SQLite em
@@ -268,7 +344,7 @@ Para um ambiente de produção:
    única instância do Celery beat por agenda;
 7. limite CORS ao domínio real, habilite cookies seguros e rotacione tokens;
 8. configure logs, métricas, alertas e health checks;
-9. valide assinatura e idempotência do webhook da Meta;
+9. valide a chave da Evolution API e a idempotência do webhook;
 10. rode a suíte de testes antes de promover a versão.
 
 Exemplo de processo web fora do Compose:

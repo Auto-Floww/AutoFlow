@@ -158,6 +158,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.routes.products import bp as products_bp
     from app.routes.settings import bp as settings_bp
     from app.routes.whatsapp import bp as whatsapp_bp
+    from backend.controllers import whatsapp_qrcode_bp
 
     for blueprint in (
         auth_bp,
@@ -171,6 +172,7 @@ def _register_blueprints(app: Flask) -> None:
         faq_bp,
         settings_bp,
         whatsapp_bp,
+        whatsapp_qrcode_bp,
     ):
         app.register_blueprint(blueprint)
 
@@ -335,8 +337,8 @@ def _register_cli(app: Flask) -> None:
             "SECRET_KEY": app.config.get("SECRET_KEY"),
             "DATABASE_URL": app.config.get("SQLALCHEMY_DATABASE_URI"),
             "GROQ_API_KEY": app.config.get("GROQ_API_KEY"),
-            "WHATSAPP_ACCESS_TOKEN": app.config.get("WHATSAPP_ACCESS_TOKEN"),
-            "WHATSAPP_VERIFY_TOKEN": app.config.get("WHATSAPP_VERIFY_TOKEN"),
+            "EVOLUTION_API_URL": app.config.get("EVOLUTION_API_URL"),
+            "EVOLUTION_API_KEY": app.config.get("EVOLUTION_API_KEY"),
         }
         for key, value in required.items():
             logging.getLogger(__name__).info("%s: %s", key, "ok" if value else "ausente")

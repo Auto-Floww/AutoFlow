@@ -63,5 +63,34 @@ class ReprMixin:
         return f"<{self.__class__.__name__} {getattr(self, 'id', None)}{suffix}>"
 
 
+class CrudMixin:
+    """Basic persistence kept on the model, without a redundant repository."""
+
+    def salvar(self, *, commit: bool = True):
+        db.session.add(self)
+        db.session.commit() if commit else db.session.flush()
+        return self
+
+    def atualizar(self, *, commit: bool = True, **dados):
+        for campo, valor in dados.items():
+            if not hasattr(self, campo):
+                raise AttributeError(f"Campo desconhecido: {campo}")
+            setattr(self, campo, valor)
+        db.session.commit() if commit else db.session.flush()
+        return self
+
+    def deletar(self, *, commit: bool = True) -> None:
+        db.session.delete(self)
+        db.session.commit() if commit else db.session.flush()
+
+    @classmethod
+    def listar_todos(cls):
+        return cls.query.all()
+
+    @classmethod
+    def buscar_por_id(cls, object_id: int):
+        return db.session.get(cls, int(object_id))
+
+
 def as_dict(instance: Any, *fields: str) -> dict[str, Any]:
     return {field: getattr(instance, field) for field in fields}

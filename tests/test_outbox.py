@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 from datetime import timedelta
 
@@ -18,43 +16,21 @@ from app.services.outbox_service import OutboxService
 from app.tasks.ai_tasks import dispatch_task_outbox
 
 
-def _signature(secret: str, body: bytes) -> str:
-    digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return f"sha256={digest}"
-
-
-def _message_payload(phone_number_id: str) -> dict:
+def _message_payload(instance_name: str) -> dict:
     return {
-        "object": "whatsapp_business_account",
-        "entry": [
-            {
-                "id": "waba-outbox",
-                "changes": [
-                    {
-                        "field": "messages",
-                        "value": {
-                            "messaging_product": "whatsapp",
-                            "metadata": {"phone_number_id": phone_number_id},
-                            "contacts": [
-                                {
-                                    "wa_id": "5511988881111",
-                                    "profile": {"name": "Cliente Outbox"},
-                                }
-                            ],
-                            "messages": [
-                                {
-                                    "from": "5511988881111",
-                                    "id": "wamid.outbox-recovery",
-                                    "timestamp": "1893459600",
-                                    "type": "text",
-                                    "text": {"body": "Mensagem durável"},
-                                }
-                            ],
-                        },
-                    }
-                ],
-            }
-        ],
+        "event": "messages.upsert",
+        "instance": instance_name,
+        "apikey": "evolution-outbox-secret",
+        "data": {
+            "key": {
+                "remoteJid": "5511988881111@s.whatsapp.net",
+                "fromMe": False,
+                "id": "wamid.outbox-recovery",
+            },
+            "pushName": "Cliente Outbox",
+            "messageTimestamp": 1893459600,
+            "message": {"conversation": "Mensagem durável"},
+        },
     }
 
 
@@ -64,18 +40,18 @@ def test_webhook_survives_broker_failure_and_beat_recovers(
     company = company_factory()
     integration = WhatsAppIntegration(
         company_id=company.id,
-        phone_number_id="phone-outbox",
+        instance_name="phone-outbox",
         status="CONNECTED",
         is_active=True,
     )
     db.session.add(integration)
     db.session.commit()
     app.config.update(
-        WHATSAPP_APP_SECRET="meta-outbox-secret",
+        EVOLUTION_API_KEY="evolution-outbox-secret",
         OUTBOX_IMMEDIATE_DISPATCH=True,
     )
     raw = json.dumps(
-        _message_payload(integration.phone_number_id),
+        _message_payload(integration.instance_name),
         separators=(",", ":"),
         ensure_ascii=False,
     ).encode()
@@ -94,12 +70,9 @@ def test_webhook_survives_broker_failure_and_beat_recovers(
         staticmethod(lambda task_name: BrokerUnavailable),
     )
     response = client.post(
-        "/webhooks/whatsapp",
+        "/webhooks/evolution",
         data=raw,
         content_type="application/json",
-        headers={
-            "X-Hub-Signature-256": _signature("meta-outbox-secret", raw)
-        },
     )
 
     assert response.status_code == 200

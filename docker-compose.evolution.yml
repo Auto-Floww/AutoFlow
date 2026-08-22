@@ -1,0 +1,78 @@
+# Optional, self-contained Evolution API v2 stack for AutoFlow.
+# Start it together with the main stack using the command documented in README.md.
+services:
+  evolution-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.evolution
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  evolution-redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.evolution
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$$EVOLUTION_REDIS_PASSWORD\""]
+    volumes:
+      - evolution_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$EVOLUTION_REDIS_PASSWORD redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  evolution-api:
+    # v2.3.6 is the latest v2 release and avoids the v2.4+ activation requirement.
+    image: evoapicloud/evolution-api:v2.3.6
+    restart: unless-stopped
+    env_file:
+      - .env.evolution
+    environment:
+      SERVER_NAME: autoflow-evolution
+      SERVER_TYPE: http
+      SERVER_PORT: "8080"
+      CORS_METHODS: GET,POST,PUT,DELETE
+      CORS_CREDENTIALS: "false"
+      LOG_LEVEL: ERROR,WARN,INFO
+      LOG_COLOR: "true"
+      LOG_BAILEYS: error
+      DEL_INSTANCE: "false"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_CLIENT_NAME: autoflow_evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      DATABASE_SAVE_DATA_LABELS: "true"
+      DATABASE_SAVE_DATA_HISTORIC: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_TTL: "604800"
+      CACHE_REDIS_PREFIX_KEY: autoflow_evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "false"
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      QRCODE_LIMIT: "30"
+      QRCODE_COLOR: "#175197"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+
+volumes:
+  evolution_instances:
+  evolution_postgres_data:
+  evolution_redis_data:

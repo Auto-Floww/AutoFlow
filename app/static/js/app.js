@@ -511,7 +511,14 @@
       const content = input.value.trim(); const button = $("button[type='submit']", chatForm); const formData = new FormData(chatForm); setLoading(button, true);
       const optimistic = appendOutgoingMessage(content);
       input.value = ""; resize();
-      try { const payload = await apiFetch(chatForm.action, { method: "POST", body: formData }); optimistic?.setAttribute("data-message-id", payload.data?.message?.id || payload.message?.id || payload.id || ""); }
+      try {
+        const payload = await apiFetch(chatForm.action, { method: "POST", body: formData });
+        optimistic?.setAttribute("data-message-id", payload.data?.message?.id || payload.message?.id || payload.id || "");
+        if (payload.data?.auto_claimed) {
+          toast("Atendimento assumido e mensagem adicionada à fila.");
+          window.setTimeout(() => window.location.reload(), 350);
+        }
+      }
       catch (error) { optimistic?.classList.add("message-failed"); input.value = content; resize(); toast(error.message || "Mensagem não enviada.", "error"); }
       finally { setLoading(button, false); input.focus(); }
     });
@@ -704,6 +711,55 @@
     $("[data-check-webhook]")?.addEventListener("click", async (event) => {
       const button = event.currentTarget; setLoading(button, true);
       try { const payload = await apiFetch(button.dataset.url, { method: "POST", body: {} }); toast(payload.message || "Conexão verificada."); } catch (error) { toast(error.message, "error"); } finally { setLoading(button, false); }
+    });
+    const qrPanel = $("[data-qrcode-panel]");
+    const qrImage = $("[data-qrcode-image]", qrPanel || doc);
+    const qrPlaceholder = $("[data-qrcode-placeholder]", qrPanel || doc);
+    const qrFeedback = $("[data-qrcode-feedback]", qrPanel || doc);
+    const qrStatus = $("[data-qrcode-status]", qrPanel || doc);
+    const printButton = $("[data-print-qrcode]", qrPanel || doc);
+    const loadQrCode = async (button) => {
+      if (!qrPanel || !qrImage || !qrPlaceholder) return;
+      setLoading(button, true);
+      if (qrFeedback) qrFeedback.textContent = "Solicitando um novo QR Code à Evolution API...";
+      try {
+        const response = await apiFetch(button.dataset.url || qrPanel.dataset.url, { method: "POST", body: {} });
+        const data = response.data || {};
+        if (data.connected) {
+          qrImage.hidden = true; qrPlaceholder.hidden = false;
+          qrPlaceholder.innerHTML = '<i data-lucide="circle-check"></i><strong>Instância conectada</strong><span>Não é necessário ler outro QR Code.</span>';
+          if (qrStatus) { qrStatus.className = "status-badge success"; qrStatus.innerHTML = "<i></i>Conectado"; }
+          if (qrFeedback) qrFeedback.textContent = "A conexão com o WhatsApp já está ativa.";
+          if (printButton) printButton.disabled = true;
+          refreshIcons(qrPanel);
+          return;
+        }
+        if (!data.qr_code) throw new Error("A Evolution API não retornou um QR Code.");
+        qrImage.src = data.qr_code;
+        try { await qrImage.decode(); } catch (_) { /* onload fallback handled by the browser */ }
+        qrImage.hidden = false; qrPlaceholder.hidden = true;
+        if (qrStatus) { qrStatus.className = "status-badge warning"; qrStatus.innerHTML = "<i></i>Aguardando leitura"; }
+        if (qrFeedback) qrFeedback.textContent = "QR Code pronto. Leia pelo WhatsApp ou use a opção de impressão.";
+        if (printButton) printButton.disabled = false;
+        refreshIcons(qrPanel);
+        toast(response.message || "QR Code atualizado.", "info");
+      } catch (error) {
+        qrImage.hidden = true; qrPlaceholder.hidden = false;
+        qrPlaceholder.innerHTML = '<i data-lucide="triangle-alert"></i><strong>Não foi possível carregar</strong><span>Verifique a instância e tente novamente.</span>';
+        if (qrFeedback) qrFeedback.textContent = error.message;
+        if (printButton) printButton.disabled = true;
+        refreshIcons(qrPanel);
+        toast(error.message, "error");
+      } finally { setLoading(button, false); }
+    };
+    $("[data-open-qrcode]")?.addEventListener("click", async (event) => {
+      qrPanel?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      await loadQrCode(event.currentTarget);
+    });
+    $("[data-load-qrcode]")?.addEventListener("click", (event) => loadQrCode(event.currentTarget));
+    printButton?.addEventListener("click", () => {
+      if (!qrImage || qrImage.hidden || !qrImage.src) { toast("Atualize o QR Code antes de imprimir.", "warning"); return; }
+      window.print();
     });
   };
 

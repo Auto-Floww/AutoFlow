@@ -3,42 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0d5f56">
+  <meta name="theme-color" content="#05080c">
   <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
   <title>{% block title %}Acessar{% endblock %} · AutoFlow</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body class="auth-page" data-page="auth">
+  <a class="skip-link" href="#auth-form">Ir para o formulário</a>
   <main class="auth-shell">
-    <section class="auth-panel" aria-label="AutoFlow">
-      <a class="brand brand-light" href="/login" aria-label="AutoFlow">
+    <section class="auth-showcase" aria-label="AutoFlow">
+      <a class="auth-brand" href="/login" aria-label="AutoFlow — início">
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span class="brand-name">Auto<span>Flow</span></span>
+        <span>Auto<strong>Flow</strong></span>
       </a>
-      <div class="auth-panel-copy">
-        <span class="eyebrow eyebrow-light"><i data-lucide="sparkles"></i> Atendimento que não para</span>
-        <h1>Transforme conversas em <em>resultados.</em></h1>
-        <p>Automatize seu WhatsApp, qualifique oportunidades e cuide de cada cliente em um só lugar.</p>
-        <div class="auth-benefits">
-          <span><i data-lucide="check"></i> IA conectada ao seu negócio</span>
-          <span><i data-lucide="check"></i> Atendimento humano quando importa</span>
-          <span><i data-lucide="check"></i> Dados protegidos por empresa</span>
+      <div class="auth-showcase-copy">
+        <p class="auth-kicker">Atendimento inteligente no WhatsApp</p>
+        <h1>Seu atendimento continua. <span>Suas vendas também.</span></h1>
+        <p>Automatize conversas, qualifique oportunidades e mantenha sua equipe no controle quando o atendimento humano importa.</p>
+      </div>
+      <div class="auth-conversation" aria-label="Exemplo de conversa automatizada">
+        <div class="auth-conversation-head">
+          <span>AF</span>
+          <div><strong>AutoFlow</strong><small>Assistente online</small></div>
         </div>
+        <p class="auth-bubble auth-bubble-in">Olá! Gostaria de conhecer as opções disponíveis.</p>
+        <p class="auth-bubble auth-bubble-out">Claro. Encontrei as melhores opções para você. Posso ajudar a escolher?</p>
+        <div class="auth-conversation-status"><i></i> Respondido pela IA em segundos</div>
       </div>
-      <div class="auth-quote">
-        <div class="quote-stars" aria-hidden="true">✦ ✦ ✦</div>
-        <blockquote>Atendimento automatizado com dados verificados, memória de contexto e transferência segura para sua equipe.</blockquote>
-        <div><span class="avatar"><i data-lucide="shield-check"></i></span><span><strong>Operação confiável</strong><small>Isolamento de dados por empresa</small></span></div>
-      </div>
-      <span class="auth-orb auth-orb-one"></span><span class="auth-orb auth-orb-two"></span>
     </section>
 
-    <section class="auth-content">
-      <div class="auth-mobile-brand"><a class="brand" href="/login"><span class="brand-mark"><span></span><span></span><span></span></span><span class="brand-name">Auto<span>Flow</span></span></a></div>
+    <nav class="auth-mode-rail" aria-label="Acesso à conta">
+      <a class="auth-tab {{ 'active' if request.endpoint == 'auth.login' else '' }}" href="/login"{% if request.endpoint == 'auth.login' %} aria-current="page"{% endif %}>Entrar</a>
+      <a class="auth-tab {{ 'active' if request.endpoint == 'auth.register' else '' }}" href="/register"{% if request.endpoint == 'auth.register' %} aria-current="page"{% endif %}>Criar conta</a>
+    </nav>
+
+    <section class="auth-content" id="auth-form">
       <div class="auth-card">
+        <a class="auth-card-brand" href="/login" aria-label="AutoFlow — início">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>Auto<strong>Flow</strong></span>
+        </a>
         {% with flashed = get_flashed_messages(with_categories=true) if get_flashed_messages is defined else [] %}
           {% for category, message in flashed %}
             <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else category }}" role="alert"><i data-lucide="circle-alert"></i><span>{{ message }}</span></div>
@@ -46,7 +53,7 @@
         {% endwith %}
         {% block content %}{% endblock %}
       </div>
-      <footer class="auth-footer">© {{ current_year|default(2026) }} AutoFlow · <a href="#">Privacidade</a> · <a href="#">Termos</a></footer>
+      <footer class="auth-footer">© {{ current_year|default(2026) }} AutoFlow · Acesso seguro</footer>
     </section>
   </main>
   <div class="toast-region" aria-live="polite" data-toast-region></div>

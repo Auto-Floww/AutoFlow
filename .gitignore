@@ -1,8 +1,12 @@
 .env
+.env.evolution
 .venv/
+.venv2/
+.audit-venv/
 __pycache__/
 *.py[cod]
 *.log
+runtime-celerybeat-schedule*
 .pytest_cache/
 .coverage
 htmlcov/

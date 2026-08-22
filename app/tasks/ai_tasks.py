@@ -37,6 +37,20 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return None
 
 
+def _evolution_message_id(result: dict) -> str | None:
+    """Normalize Evolution v2 and legacy provider send responses."""
+
+    key = result.get("key") or {}
+    if isinstance(key, dict) and key.get("id"):
+        return str(key["id"])
+    if result.get("id"):
+        return str(result["id"])
+    messages = result.get("messages") or []
+    if messages and isinstance(messages[0], dict) and messages[0].get("id"):
+        return str(messages[0]["id"])
+    return None
+
+
 def _claim_conversation(conversation: Conversation, message_id: int) -> bool:
     memory = dict(conversation.memory_json or {})
     holder = memory.get("processing_message_id")
@@ -261,6 +275,21 @@ def send_whatsapp_message(self, message_id: int) -> dict:
             "message_id": message.id,
             "external_message_id": message.external_message_id,
         }
+    # Older workers only understood Meta's ``messages[0].id`` response. An
+    # Evolution v2 send may therefore have reached WhatsApp even though the old
+    # worker recorded this parser error. Never resend such an ambiguous result.
+    if message.error_message in {
+        "WhatsApp returned no message identifier",
+        "delivery outcome unknown after provider response; verify WhatsApp before retry",
+    }:
+        if message.status != "FAILED":
+            message.status = "FAILED"
+            message.error_message = (
+                "delivery outcome unknown after provider response; "
+                "verify WhatsApp before retry"
+            )
+            db.session.commit()
+        return {"status": "delivery_unknown", "message_id": message.id}
     send_metadata = dict(message.ai_metadata_json or {})
     send_started = _parse_timestamp(send_metadata.get("whatsapp_send_started_at"))
     if message.status == "SENDING":
@@ -308,7 +337,7 @@ def send_whatsapp_message(self, message_id: int) -> dict:
             text=content,
             integration_id=integration_id,
         )
-        external_id = ((result.get("messages") or [{}])[0]).get("id")
+        external_id = _evolution_message_id(result)
         if not external_id:
             raise ExternalServiceError(
                 "WhatsApp returned no message identifier", retryable=True

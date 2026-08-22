@@ -1,7 +1,5 @@
-"""Verificação, assinatura, idempotência e enqueue do webhook Meta."""
+"""Autenticação, idempotência e enqueue do webhook Evolution API v2."""
 
-import hashlib
-import hmac
 import json
 
 from app.extensions import db
@@ -12,135 +10,137 @@ from app.models import (
     TaskOutbox,
     WhatsAppIntegration,
 )
+from app.services.whatsapp_service import WhatsAppService
 
 
-def _signature(secret: str, body: bytes) -> str:
-    digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return f"sha256={digest}"
-
-
-def _message_payload(phone_number_id: str, message_id: str = "wamid.001") -> dict:
+def _evolution_payload(instance_name: str, message_id: str = "msg-001") -> dict:
     return {
-        "object": "whatsapp_business_account",
-        "entry": [
-            {
-                "id": "waba-1",
-                "changes": [
-                    {
-                        "field": "messages",
-                        "value": {
-                            "messaging_product": "whatsapp",
-                            "metadata": {"phone_number_id": phone_number_id},
-                            "contacts": [
-                                {
-                                    "wa_id": "5511999993333",
-                                    "profile": {"name": "Cliente Meta"},
-                                }
-                            ],
-                            "messages": [
-                                {
-                                    "from": "5511999993333",
-                                    "id": message_id,
-                                    "timestamp": "1893459600",
-                                    "type": "text",
-                                    "text": {"body": "Tem camiseta preta tamanho M?"},
-                                }
-                            ],
-                        },
-                    }
-                ],
-            }
-        ],
+        "event": "messages.upsert",
+        "instance": instance_name,
+        "apikey": "test-evolution-key",
+        "data": {
+            "key": {
+                "remoteJid": "5511999993333@s.whatsapp.net",
+                "fromMe": False,
+                "id": message_id,
+            },
+            "pushName": "Cliente Evolution",
+            "messageTimestamp": 1893459600,
+            "message": {"conversation": "Tem camiseta preta tamanho M?"},
+        },
     }
 
 
-def test_webhook_verification_challenge(client, app):
-    app.config["WHATSAPP_VERIFY_TOKEN"] = "verify-local"
-
-    accepted = client.get(
-        "/webhooks/whatsapp",
-        query_string={
-            "hub.mode": "subscribe",
-            "hub.verify_token": "verify-local",
-            "hub.challenge": "123456",
-        },
-    )
-    rejected = client.get(
-        "/webhooks/whatsapp",
-        query_string={
-            "hub.mode": "subscribe",
-            "hub.verify_token": "token-errado",
-            "hub.challenge": "123456",
-        },
-    )
-
-    assert accepted.status_code == 200
-    assert accepted.get_data(as_text=True) == "123456"
-    assert rejected.status_code == 403
-
-
-def test_invalid_signature_is_rejected_before_persistence(
-    client, app, company_factory
-):
+def test_invalid_apikey_is_rejected(client, app, company_factory):
+    """Webhook com apikey incorreta deve retornar 401."""
     company = company_factory()
     db.session.add(
         WhatsAppIntegration(
             company_id=company.id,
-            phone_number_id="phone-123",
+            instance_name="loja-teste",
             status="CONNECTED",
             is_active=True,
         )
     )
     db.session.commit()
-    app.config["WHATSAPP_APP_SECRET"] = "meta-app-secret"
-    raw = json.dumps(_message_payload("phone-123"), separators=(",", ":")).encode()
+    app.config["EVOLUTION_API_KEY"] = "correct-key"
+
+    payload = _evolution_payload("loja-teste")
+    payload["apikey"] = "wrong-key"
+    raw = json.dumps(payload, separators=(",", ":")).encode()
 
     response = client.post(
-        "/webhooks/whatsapp",
+        "/webhooks/evolution",
         data=raw,
         content_type="application/json",
-        headers={"X-Hub-Signature-256": "sha256=invalid"},
     )
 
     assert response.status_code == 401
     assert Message.query.count() == 0
 
 
+def test_instance_apikey_is_validated_against_evolution(monkeypatch):
+    service = WhatsAppService(api_url="http://evolution", api_key="global-key")
+    calls = []
+
+    def fake_request(method, path, payload=None, *, api_key=None):
+        calls.append((method, path, api_key))
+        return {"instance": {"state": "open"}}
+
+    monkeypatch.setattr(service, "_request", fake_request)
+
+    assert service.verify_webhook(
+        {"instance": "loja-principal", "apikey": "instance-token"}
+    )
+    assert calls == [
+        (
+            "GET",
+            "instance/connectionState/loja-principal",
+            "instance-token",
+        )
+    ]
+
+
+def test_missing_instance_is_rejected(client, app):
+    """Webhook sem nome de instância deve retornar 400."""
+    app.config["EVOLUTION_API_KEY"] = "test-key"
+    payload = {"event": "messages.upsert", "apikey": "test-key"}
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+
+    response = client.post(
+        "/webhooks/evolution",
+        data=raw,
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+
+
 def test_valid_message_is_stored_once_and_enqueued_once(
     client, app, company_factory
 ):
+    """Mensagem válida deve criar Customer, Conversation, Message e TaskOutbox
+    na primeira chamada e ser idempotente nas subsequentes."""
     company = company_factory()
     db.session.add(
         WhatsAppIntegration(
             company_id=company.id,
-            phone_number_id="phone-456",
+            instance_name="loja-principal",
             status="CONNECTED",
             is_active=True,
         )
     )
     db.session.commit()
-    app.config["WHATSAPP_APP_SECRET"] = "meta-app-secret"
-    payload = _message_payload("phone-456")
+    app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
+
+    payload = _evolution_payload("loja-principal")
     raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
-    headers = {"X-Hub-Signature-256": _signature("meta-app-secret", raw)}
+
     first = client.post(
-        "/webhooks/whatsapp", data=raw, content_type="application/json", headers=headers
+        "/webhooks/evolution",
+        data=raw,
+        content_type="application/json",
     )
     repeated = client.post(
-        "/webhooks/whatsapp", data=raw, content_type="application/json", headers=headers
+        "/webhooks/evolution",
+        data=raw,
+        content_type="application/json",
     )
 
     assert first.status_code == repeated.status_code == 200
-    assert first.get_json()["queued"] == 0
-    assert repeated.get_json()["queued"] == 0
-    assert first.get_json()["outbox_pending"] == 1
-    # Meta retries are acknowledged without attempting the same pending row
-    # again; the periodic dispatcher owns broker recovery.
-    assert repeated.get_json()["outbox_pending"] == 0
+    first_json = first.get_json()
+    repeated_json = repeated.get_json()
+
+    # Primeira chamada cria e enfileira; segunda reconhece como duplicada.
+    assert first_json["events"] == 1
+    assert first_json["outbox_pending"] == 1
+    assert repeated_json["events"] == 1
+    assert repeated_json["outbox_pending"] == 0
+
     assert Customer.query.filter_by(company_id=company.id).count() == 1
     assert Conversation.query.filter_by(company_id=company.id).count() == 1
     message = Message.query.filter_by(company_id=company.id).one()
-    assert message.external_message_id == "wamid.001"
+    assert message.external_message_id == "msg-001"
     assert message.content == "Tem camiseta preta tamanho M?"
     outbox = TaskOutbox.query.one()
     assert outbox.company_id == company.id
@@ -148,3 +148,61 @@ def test_valid_message_is_stored_once_and_enqueued_once(
     assert outbox.idempotency_key == f"process-message:{message.id}"
     assert outbox.payload_json == {"message_id": message.id}
     assert outbox.status == "PENDING"
+
+
+def test_group_messages_are_ignored(client, app, company_factory):
+    """Mensagens vindas de grupos (@g.us) devem ser silenciosamente ignoradas."""
+    company = company_factory()
+    db.session.add(
+        WhatsAppIntegration(
+            company_id=company.id,
+            instance_name="loja-grupo",
+            status="CONNECTED",
+            is_active=True,
+        )
+    )
+    db.session.commit()
+    app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
+
+    payload = _evolution_payload("loja-grupo")
+    payload["data"]["key"]["remoteJid"] = "120363000000000000@g.us"
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+
+    response = client.post(
+        "/webhooks/evolution",
+        data=raw,
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["events"] == 0
+    assert Message.query.count() == 0
+
+
+def test_from_me_messages_are_ignored(client, app, company_factory):
+    """Mensagens enviadas pelo próprio número (fromMe=True) devem ser ignoradas."""
+    company = company_factory()
+    db.session.add(
+        WhatsAppIntegration(
+            company_id=company.id,
+            instance_name="loja-me",
+            status="CONNECTED",
+            is_active=True,
+        )
+    )
+    db.session.commit()
+    app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
+
+    payload = _evolution_payload("loja-me")
+    payload["data"]["key"]["fromMe"] = True
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+
+    response = client.post(
+        "/webhooks/evolution",
+        data=raw,
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["events"] == 0
+    assert Message.query.count() == 0

@@ -1,6 +1,8 @@
-"""Configuracoes da IA e integracao oficial com WhatsApp."""
+"""Configuracoes da IA e integracao WhatsApp via Evolution API."""
 
 from __future__ import annotations
+
+import os
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import login_required
@@ -9,7 +11,6 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models import AISettings, WhatsAppIntegration
 from app.routes.helpers import coerce_bool, failure, model_dict, payload, record_audit, success
-from app.security import encrypt_secret
 from app.services.exceptions import DomainError
 from app.services.whatsapp_service import WhatsAppService
 from app.tenant import current_company_id, roles_required
@@ -105,47 +106,42 @@ def save_ai():
 @login_required
 def whatsapp():
     integration = WhatsAppIntegration.for_company(current_company_id()).one_or_none()
+    webhook_url = current_app.config.get("EVOLUTION_WEBHOOK_URL") or (
+        f"{current_app.config['APP_URL'].rstrip('/')}/webhooks/evolution"
+    )
     safe_integration = None
     if integration:
         safe_integration = {
             **model_dict(
                 integration,
                 "id",
-                "display_phone_number",
-                "phone_number_id",
-                "business_account_id",
+                "instance_name",
+                "display_name",
                 "status",
                 "is_active",
                 "last_webhook_at",
                 "last_error",
                 "updated_at",
             ),
-            "has_access_token": bool(
-                integration.access_token_encrypted
-                or current_app.config.get("WHATSAPP_ACCESS_TOKEN")
-            ),
-            "has_app_secret": bool(
-                integration.app_secret_encrypted
-                or current_app.config.get("WHATSAPP_APP_SECRET")
-            ),
             "connected": integration.status == "CONNECTED" and integration.is_active,
-            "phone_number_id_masked": integration.phone_number_id,
-            "business_account_id_masked": integration.business_account_id or "",
             "last_webhook_label": (
                 integration.last_webhook_at.strftime("%d/%m/%Y %H:%M")
                 if integration.last_webhook_at
                 else "ainda nao recebido"
             ),
             "webhook_verified": bool(integration.last_webhook_at),
-            "webhook_url": f"{current_app.config['APP_URL'].rstrip('/')}/webhooks/whatsapp",
+            "webhook_url": webhook_url,
         }
+    evolution_configured = bool(
+        current_app.config.get("EVOLUTION_API_URL") or os.getenv("EVOLUTION_API_URL")
+    )
     return render_template(
         "settings/whatsapp.html",
         integration=integration,
         integration_safe=safe_integration,
         whatsapp_integration=safe_integration or {},
-        webhook_url=f"{current_app.config['APP_URL'].rstrip('/')}/webhooks/whatsapp",
-        verify_token_configured=bool(current_app.config.get("WHATSAPP_VERIFY_TOKEN")),
+        webhook_url=webhook_url,
+        evolution_configured=evolution_configured,
     )
 
 
@@ -155,22 +151,19 @@ def whatsapp():
 def save_whatsapp():
     company_id = current_company_id()
     data = payload()
-    phone_number_id = str(data.get("phone_number_id", "")).strip()
-    if not phone_number_id:
-        return failure("Informe o Phone Number ID da Meta.", status=422)
+    instance_name = str(data.get("instance_name", "")).strip()
+    try:
+        instance_name = WhatsAppService.validate_instance_name(instance_name)
+    except DomainError as exc:
+        return failure(exc.message, status=422)
     integration = WhatsAppIntegration.for_company(company_id).one_or_none()
     if integration is None:
-        integration = WhatsAppIntegration(company_id=company_id, phone_number_id=phone_number_id)
+        integration = WhatsAppIntegration(company_id=company_id, instance_name=instance_name)
         db.session.add(integration)
-    integration.phone_number_id = phone_number_id[:100]
-    integration.display_phone_number = str(data.get("display_phone_number", "")).strip()[:32] or None
-    integration.business_account_id = str(data.get("business_account_id", "")).strip()[:100] or None
-    # Credenciais novas só ficam aptas a receber/enviar após validação real na Meta.
+    integration.instance_name = instance_name
+    integration.display_name = str(data.get("display_name", "")).strip()[:100] or None
+    # Instancia nova fica pendente ate a verificacao de conexao ser feita.
     integration.is_active = False
-    if data.get("access_token"):
-        integration.access_token_encrypted = encrypt_secret(str(data["access_token"]).strip())
-    if data.get("app_secret"):
-        integration.app_secret_encrypted = encrypt_secret(str(data["app_secret"]).strip())
     integration.status = "PENDING"
     integration.last_error = None
     try:
@@ -178,18 +171,14 @@ def save_whatsapp():
         record_audit(
             "whatsapp_integration.update",
             integration,
-            {
-                "phone_number_id": integration.phone_number_id,
-                "business_account_id": integration.business_account_id,
-                "credentials": "updated" if data.get("access_token") or data.get("app_secret") else "unchanged",
-            },
+            {"instance_name": integration.instance_name},
         )
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        return failure("Este numero ja esta conectado a outra empresa.", status=409)
+        return failure("Este nome de instancia ja esta em uso.", status=409)
     return success(
-        "Configuracao salva. Teste a conexao para ativar a integracao.",
+        "Configuracao salva. Verifique a conexao para ativar a integracao.",
         endpoint="settings.whatsapp",
     )
 
@@ -202,7 +191,7 @@ def check_whatsapp():
         result = WhatsAppService().check_connection(current_company_id())
     except DomainError as exc:
         return failure(exc.message, status=exc.status_code)
-    return success("Conexao com a Meta validada.", data=result)
+    return success("Conexao com a Evolution API validada.", data=result)
 
 
 @bp.post("/whatsapp/test")
@@ -221,18 +210,20 @@ def test_whatsapp():
         )
     except DomainError as exc:
         return failure(exc.message, status=exc.status_code)
-    return success("Mensagem de teste enviada.", data={"meta": result})
+    return success("Mensagem de teste enviada.", data={"evolution": result})
 
 
 @bp.post("/whatsapp/disconnect")
 @login_required
 @roles_required("ADMIN", "OWNER")
 def disconnect_whatsapp():
-    integration = WhatsAppIntegration.for_company(current_company_id()).one_or_none()
-    if integration is None:
-        return failure("Integracao nao encontrada.", status=404)
-    integration.is_active = False
-    integration.status = "DISCONNECTED"
-    record_audit("whatsapp_integration.disconnect", integration)
-    db.session.commit()
+    company_id = current_company_id()
+    try:
+        WhatsAppService().disconnect(company_id)
+    except DomainError as exc:
+        return failure(exc.message, status=exc.status_code)
+    record_audit(
+        "whatsapp_integration.disconnect",
+        WhatsAppIntegration.for_company(company_id).one(),
+    )
     return success("WhatsApp desconectado.", endpoint="settings.whatsapp")

@@ -24,6 +24,10 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}"]
+    ports:
+      # Local-only bind lets a Flask/Celery development process running on the
+      # host use the same broker without exposing Redis to the network.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -39,7 +43,9 @@ services:
     environment:
       DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
       REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
-      FLASK_ENV: production
+      EVOLUTION_API_URL: "http://evolution-api:8080"
+      EVOLUTION_WEBHOOK_URL: "http://web:5000/webhooks/evolution"
+      FLASK_ENV: ${FLASK_ENV:-production}
       PRODUCT_UPLOAD_DIR: /app/uploads/products
       PRODUCT_UPLOAD_URL_PREFIX: /products/uploads
     command: >-
@@ -64,7 +70,8 @@ services:
     environment:
       DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
       REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
-      FLASK_ENV: production
+      EVOLUTION_API_URL: "http://evolution-api:8080"
+      FLASK_ENV: ${FLASK_ENV:-production}
     command: celery -A celery_worker.celery worker --loglevel=INFO --concurrency=2
     depends_on:
       mysql:
@@ -83,7 +90,7 @@ services:
     environment:
       DATABASE_URL: "mysql+pymysql://autoflow:${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}@mysql:3306/autoflow?charset=utf8mb4"
       REDIS_URL: "redis://:${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}@redis:6379/0"
-      FLASK_ENV: production
+      FLASK_ENV: ${FLASK_ENV:-production}
     command: celery -A celery_worker.celery beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
     depends_on:
       mysql:

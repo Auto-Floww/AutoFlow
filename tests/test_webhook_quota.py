@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 
 from app.extensions import db
@@ -16,60 +14,41 @@ from app.models import (
 )
 
 
-def _payload(phone_number_id: str, message_id: str, sender: str) -> dict:
+def _payload(instance_name: str, message_id: str, sender: str, api_key: str) -> dict:
     return {
-        "object": "whatsapp_business_account",
-        "entry": [
-            {
-                "id": "waba-quota",
-                "changes": [
-                    {
-                        "field": "messages",
-                        "value": {
-                            "messaging_product": "whatsapp",
-                            "metadata": {"phone_number_id": phone_number_id},
-                            "contacts": [
-                                {
-                                    "wa_id": sender,
-                                    "profile": {"name": f"Cliente {sender[-4:]}"},
-                                }
-                            ],
-                            "messages": [
-                                {
-                                    "from": sender,
-                                    "id": message_id,
-                                    "timestamp": "1893459600",
-                                    "type": "text",
-                                    "text": {"body": "Mensagem sujeita a quota"},
-                                }
-                            ],
-                        },
-                    }
-                ],
-            }
-        ],
+        "event": "messages.upsert",
+        "instance": instance_name,
+        "apikey": api_key,
+        "data": {
+            "key": {
+                "remoteJid": f"{sender}@s.whatsapp.net",
+                "fromMe": False,
+                "id": message_id,
+            },
+            "pushName": f"Cliente {sender[-4:]}",
+            "messageTimestamp": 1893459600,
+            "message": {"conversation": "Mensagem sujeita a quota"},
+        },
     }
 
 
-def _post(client, secret: str, phone_number_id: str, message_id: str, sender: str):
+def _post(client, secret: str, instance_name: str, message_id: str, sender: str):
     raw = json.dumps(
-        _payload(phone_number_id, message_id, sender),
+        _payload(instance_name, message_id, sender, secret),
         separators=(",", ":"),
         ensure_ascii=False,
     ).encode("utf-8")
-    digest = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
     return client.post(
-        "/webhooks/whatsapp",
+        "/webhooks/evolution",
         data=raw,
         content_type="application/json",
-        headers={"X-Hub-Signature-256": f"sha256={digest}"},
     )
 
 
-def _integration(company, phone_number_id: str, *, status: str = "CONNECTED"):
+def _integration(company, instance_name: str, *, status: str = "CONNECTED"):
     integration = WhatsAppIntegration(
         company_id=company.id,
-        phone_number_id=phone_number_id,
+        instance_name=instance_name,
         status=status,
         is_active=True,
     )
@@ -81,7 +60,7 @@ def _integration(company, phone_number_id: str, *, status: str = "CONNECTED"):
 def _configure(app, *, hourly: int, sender_minute: int) -> str:
     secret = "quota-app-secret"
     app.config.update(
-        WHATSAPP_APP_SECRET=secret,
+        EVOLUTION_API_KEY=secret,
         OUTBOX_IMMEDIATE_DISPATCH=False,
         AI_INBOUND_HOURLY_LIMIT=hourly,
         AI_SENDER_MINUTE_LIMIT=sender_minute,
@@ -182,8 +161,8 @@ def test_pending_integration_is_rejected_before_persistence(
         client, secret, "phone-pending", "wamid.pending", "5511999993001"
     )
 
-    assert response.status_code == 400
-    assert response.get_json()["error"] == "invalid_integration_scope"
+    assert response.status_code == 200
+    assert response.get_json()["events"] == 0
     assert Message.query.count() == 0
     assert Customer.query.count() == 0
     assert Conversation.query.count() == 0

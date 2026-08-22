@@ -88,6 +88,52 @@ def test_send_whatsapp_transitions_sending_to_sent(
     assert "whatsapp_send_started_at" not in persisted.ai_metadata_json
 
 
+def test_send_whatsapp_accepts_evolution_v2_key_id(tenant_user, monkeypatch):
+    message = _outbound_message(tenant_user.company_id)
+
+    monkeypatch.setattr(
+        WhatsAppService,
+        "send_text",
+        lambda *args, **kwargs: {"key": {"id": "evolution-v2-id"}},
+    )
+
+    result = send_whatsapp_message.run(message.id)
+
+    db.session.expire_all()
+    persisted = db.session.get(Message, message.id)
+    assert result["external_message_id"] == "evolution-v2-id"
+    assert persisted.status == "SENT"
+    assert persisted.external_message_id == "evolution-v2-id"
+
+
+def test_old_evolution_parser_failure_is_not_resent(tenant_user, monkeypatch):
+    message = _outbound_message(tenant_user.company_id)
+    message.error_message = "WhatsApp returned no message identifier"
+    db.session.commit()
+    send_calls = []
+    monkeypatch.setattr(
+        WhatsAppService,
+        "send_text",
+        lambda *args, **kwargs: send_calls.append((args, kwargs)),
+    )
+
+    result = send_whatsapp_message.run(message.id)
+
+    db.session.expire_all()
+    persisted = db.session.get(Message, message.id)
+    assert result == {"status": "delivery_unknown", "message_id": message.id}
+    assert send_calls == []
+    assert persisted.status == "FAILED"
+    assert "verify WhatsApp" in persisted.error_message
+
+    # A broker redelivery remains a no-op after the status transition.
+    assert send_whatsapp_message.run(message.id) == {
+        "status": "delivery_unknown",
+        "message_id": message.id,
+    }
+    assert send_calls == []
+
+
 def test_send_whatsapp_domain_error_transitions_sending_to_failed(
     tenant_user, monkeypatch
 ):

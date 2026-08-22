@@ -72,7 +72,9 @@ def test_agent_message_is_persisted_before_async_send(
     assert outbox.status == "PENDING"
 
 
-def test_human_cannot_send_while_ai_is_active(client, login_as, tenant_user):
+def test_human_send_auto_claims_conversation_while_ai_is_active(
+    client, login_as, tenant_user
+):
     conversation = _conversation(tenant_user.company_id)
     login_as(tenant_user)
 
@@ -80,5 +82,9 @@ def test_human_cannot_send_while_ai_is_active(client, login_as, tenant_user):
         f"/conversations/{conversation.id}/messages", json={"body": "Mensagem"}
     )
 
-    assert response.status_code == 409
-    assert Message.query.filter_by(conversation_id=conversation.id).count() == 0
+    assert response.status_code == 201
+    assert response.get_json()["data"]["auto_claimed"] is True
+    db.session.refresh(conversation)
+    assert conversation.ai_status == "PAUSED"
+    assert conversation.assigned_user_id == tenant_user.id
+    assert Message.query.filter_by(conversation_id=conversation.id).count() == 1

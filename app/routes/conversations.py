@@ -269,7 +269,19 @@ def send_message(conversation_id: int):
     body = str(payload().get("body", payload().get("message", ""))).strip()
     if not body or len(body) > 4096:
         return failure("Digite uma mensagem de ate 4096 caracteres.")
+    auto_claimed = False
     try:
+        # Sending from the human composer is itself an explicit handoff action.
+        # Claim atomically here so an operator does not hit a confusing 409 when
+        # the page still shows the conversation as AI-controlled.
+        if conversation.ai_status == "ACTIVE":
+            conversation = ConversationService.claim(
+                current_company_id(),
+                conversation.id,
+                user_id=current_user.id,
+                commit=False,
+            )
+            auto_claimed = True
         message = ConversationService.record_outbound(
             current_company_id(),
             conversation_id=conversation.id,
@@ -291,7 +303,11 @@ def send_message(conversation_id: int):
     OutboxService.dispatch_best_effort(outbox.id)
     return success(
         "Mensagem adicionada a fila.",
-        data={"message": _serialize_message(message)},
+        data={
+            "message": _serialize_message(message),
+            "conversation": _serialize_conversation(conversation),
+            "auto_claimed": auto_claimed,
+        },
         status=201,
     )
 

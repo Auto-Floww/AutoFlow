@@ -2,9 +2,9 @@
 {% block title %}Entrar{% endblock %}
 {% block content %}
   <div class="auth-heading">
-    <span class="eyebrow">Bem-vindo de volta</span>
-    <h2>Acesse sua conta</h2>
-    <p>Continue de onde parou e acompanhe sua operação.</p>
+    <span class="eyebrow">Área do cliente</span>
+    <h2>Bem-vindo de volta</h2>
+    <p>Entre para acompanhar conversas, oportunidades e sua operação.</p>
   </div>
   <form method="post" action="/login" class="form-stack" data-loading-form>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
