@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoFlow - IA para atendimento no WhatsApp</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body class="intro-pending">
+
+<canvas id="intro-canvas" aria-hidden="true"></canvas>
+
+<header class="topbar landing-topbar">
+  <a href="index.html" class="topbar-logo" aria-label="AutoFlow">
+    <span class="topbar-brand-mark"><img src="assets/autoflow-mark-transparent.png" alt=""></span>
+  </a>
+  <nav class="landing-nav" aria-label="Navegação principal">
+    <a href="#recursos">Recursos</a>
+    <a href="#demo">Demo</a>
+    <a href="#funciona">Como funciona</a>
+  </nav>
+  <div class="topbar-actions">
+    <a href="login.html" class="topbar-login">Entrar</a>
+    <a href="#contato" class="topbar-cta">Falar com o time</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero landing-hero">
+    <div class="hero-content">
+      <p class="hero-kicker">AutoFlow</p>
+      <h1 class="hero-name">IA que potencializa suas vendas e atendimento no WhatsApp</h1>
+      <p class="hero-desc">Transforme a comunicação da sua empresa com um assistente comercial 24/7 que consulta estoque, informa entregas e realiza agendamentos, tudo pelo WhatsApp com dados reais.</p>
+      <div class="hero-actions">
+        <a href="#contato" class="primary-action">Quero automatizar</a>
+        <a href="#demo" class="secondary-action">Ver conversa de exemplo</a>
+      </div>
+    </div>
+
+    <div class="hero-ai-panel" aria-label="AutoFlow conectando WhatsApp aos dados da empresa">
+      <div class="ai-panel-inner">
+        <img class="ai-dashboard-image" src="assets/ai-automation-core-dashboard.png" alt="Fluxo do AutoFlow conectando o WhatsApp do cliente à base da empresa para gerar uma resposta automática.">
+        <div class="ai-dashboard-legacy" aria-hidden="true">
+        <div class="ai-sheen" aria-hidden="true"></div>
+        <svg class="ai-routes" viewBox="0 0 760 460" aria-hidden="true">
+          <defs>
+            <linearGradient id="route-in" x1="0" x2="1">
+              <stop offset="0" stop-color="#6bffb0" stop-opacity="0.12" />
+              <stop offset="1" stop-color="#6bffb0" stop-opacity="0.9" />
+            </linearGradient>
+            <linearGradient id="route-out" x1="0" x2="1">
+              <stop offset="0" stop-color="#6bffb0" stop-opacity="0.9" />
+              <stop offset="1" stop-color="#6bffb0" stop-opacity="0.16" />
+            </linearGradient>
+          </defs>
+
+          <circle class="route-orbit" cx="400" cy="250" r="82" />
+          <path class="route-track" d="M170 115 C170 205 250 250 378 250" />
+          <path class="route-track" d="M260 335 C260 278 318 250 378 250" />
+          <path class="route-track" d="M558 115 C558 197 500 238 420 238" />
+          <path class="route-track" d="M555 330 C555 274 504 252 420 252" />
+          <path class="route-track" d="M420 250 C470 250 505 250 558 250" />
+
+          <path class="route-flow route-in" d="M170 115 C170 205 250 250 378 250" />
+          <path class="route-flow route-in route-delayed" d="M260 335 C260 278 318 250 378 250" />
+          <path class="route-flow route-out route-delayed" d="M558 115 C558 197 500 238 420 238" />
+          <path class="route-flow route-out" d="M555 330 C555 274 504 252 420 252" />
+          <path class="route-flow route-out route-delayed" d="M420 250 C470 250 505 250 558 250" />
+
+          <g class="route-points">
+            <circle cx="170" cy="115" r="4" />
+            <circle cx="260" cy="335" r="4" />
+            <circle cx="558" cy="115" r="4" />
+            <circle cx="555" cy="330" r="4" />
+            <circle cx="558" cy="250" r="4" />
+          </g>
+        </svg>
+
+        <div class="ai-core">AutoFlow<br>AI Core</div>
+
+        <article class="ai-node whatsapp-node">
+          <div class="node-header">WhatsApp do cliente <span>...</span></div>
+          <p>Quero um notebook de até R$ 5.000. Você recomenda algum?</p>
+          <span class="node-dot">w</span>
+        </article>
+
+        <article class="ai-node company-node company-node-large">
+          <div class="node-header">Base da empresa <span>...</span></div>
+          <div class="node-grid">
+            <div><span>Produto</span><strong>IdeaPad Slim i5</strong></div>
+            <div><span>Preço</span><strong>R$ 4.799</strong><i></i></div>
+            <div><span>Estoque</span><strong>3 unidades</strong><i></i></div>
+            <div><span>Entrega</span><strong>Mesmo dia</strong><i></i></div>
+          </div>
+        </article>
+
+        <article class="ai-node company-node company-node-small">
+          <div class="node-header">Base da empresa <span>...</span></div>
+          <div class="node-grid">
+            <div><span>Produto</span><strong>IdeaPad Slim i5</strong></div>
+            <div><span>Preço</span><strong>R$ 4.799</strong><i></i></div>
+            <div><span>Estoque</span><strong>3 unidades</strong><i></i></div>
+            <div><span>Entrega</span><strong>Mesmo dia</strong><i></i></div>
+          </div>
+        </article>
+
+        <article class="ai-node answer-node">
+          <p>Recomendo o IdeaPad Slim i5: 16 GB de RAM, SSD de 512 GB e tela de 15,6\". Está por R$ 4.799. Temos 3 unidades e entregamos hoje.</p>
+          <span class="node-dot">w</span>
+        </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="use-cases" id="recursos">
+    <div class="section-heading">
+      <h2>O atendimento responde com dados, não com achismos.</h2>
+      <p>O AutoFlow usa produtos, estoque, regras de entrega, horários e perguntas frequentes cadastrados pela empresa.</p>
+    </div>
+
+    <div class="use-case-grid">
+      <article class="use-case-card">
+        <svg class="use-case-icon" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M7 14 24 5l17 9v20L24 43 7 34V14Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+          <path d="m7 14 17 9 17-9M24 23v20M15.5 9.5l17 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+        </svg>
+        <h3>Produtos</h3>
+        <p>Explica <strong>preço</strong>, tamanho, cor, material, garantia, formas de uso e diferenças entre modelos.</p>
+      </article>
+      <article class="use-case-card">
+        <svg class="use-case-icon" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M9 32V12h10v20H9Zm20 0V12h10v20H29ZM7 36h34M18 36a5 5 0 0 0 10 0" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m35 33 3 3 5-6" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3>Estoque</h3>
+        <p>Confere <strong>disponibilidade</strong> antes de prometer ao cliente e orienta quando um item acabou.</p>
+      </article>
+      <article class="use-case-card">
+        <svg class="use-case-icon" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M5 16h27v18H5V16Zm27 6h7l4 6v6H32V22Z" fill="currentColor"/>
+          <circle cx="14" cy="36" r="4" fill="currentColor"/>
+          <circle cx="36" cy="36" r="4" fill="currentColor"/>
+        </svg>
+        <h3>Entrega</h3>
+        <p>Informa <strong>prazos</strong>, valor do frete, regiões atendidas, retirada na loja e status básico do pedido.</p>
+      </article>
+      <article class="use-case-card">
+        <svg class="use-case-icon" viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="8" y="10" width="30" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="4"/>
+          <path d="M15 6v8M31 6v8M8 19h30M16 27h3M23 27h3M30 27h3M16 34h3M23 34h3" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="37" cy="35" r="8" fill="var(--ink)" stroke="currentColor" stroke-width="4"/>
+          <path d="M37 31v5l4 2" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <h3>Agendamentos</h3>
+        <p>Marca <strong>horários</strong> para consultas, serviços, visitas, retiradas ou demonstrações conforme a agenda.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="demo" id="demo">
+    <div class="demo-stage">
+      <div class="demo-sticky">
+        <div class="phone-visual" id="phoneVisual">
+          <canvas id="phoneCanvas" aria-label="iPhone 3D interativo"></canvas>
+          <div class="phone phone-screen-overlay" id="phoneScreenOverlay" aria-label="Conversa no WhatsApp">
+          <div class="iphone-speaker" aria-hidden="true"></div>
+          <div class="iphone-screen">
+            <div class="iphone-status" aria-hidden="true">
+              <span>9:41</span>
+              <span>LTE 100%</span>
+            </div>
+
+            <div class="phone-header">
+              <button class="wa-back" type="button" aria-label="Voltar">&lt;</button>
+              <div class="avatar">AF</div>
+              <div class="contact-info">
+                <strong>AutoFlow</strong>
+                <span class="status" id="chatStatus">Assistente online</span>
+              </div>
+              <div class="wa-actions" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.9v2.7a1.8 1.8 0 0 1-2 1.8 18 18 0 0 1-7.8-2.8 17.7 17.7 0 0 1-5.5-5.5A18 18 0 0 1 3.9 5.3a1.8 1.8 0 0 1 1.8-2h2.7a1.8 1.8 0 0 1 1.8 1.5l.4 2.3a1.8 1.8 0 0 1-.5 1.6L8.9 9.9a14.4 14.4 0 0 0 5.2 5.2l1.2-1.2a1.8 1.8 0 0 1 1.6-.5l2.3.4a1.8 1.8 0 0 1 1.5 1.8Z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="m16 10 4-2.5v9L16 14"/></svg>
+              </div>
+            </div>
+
+            <div class="phone-body" id="chatBody">
+              <div class="chat-msg in" data-index="0"><p>Boa noite. Quero um notebook de até R$ 5.000. Você recomenda algum?</p><time>21:42</time></div>
+              <div class="chat-msg out" data-index="1"><p>Boa noite. Para esse valor, recomendo o IdeaPad Slim i5.</p><time>21:42</time></div>
+              <div class="chat-msg out" data-index="2"><p>Ele tem Intel i5, 16 GB de RAM, SSD de 512 GB e tela de 15,6\". Está por R$ 4.799.</p><time>21:43</time></div>
+              <div class="chat-msg in" data-index="3"><p>Serve para estudar e trabalhar com várias abas abertas?</p><time>21:43</time></div>
+              <div class="chat-msg out" data-index="4"><p>Serve, sim. Os 16 GB de RAM ajudam bastante com navegador, planilhas, chamadas de vídeo e estudos.</p><time>21:44</time></div>
+              <div class="chat-msg in" data-index="5"><p>Tem em estoque? Entrega hoje no Centro?</p><time>21:44</time></div>
+              <div class="chat-msg out" data-index="6"><p>Temos 3 unidades em estoque. Para o Centro, entregamos hoje até as 18h, com frete de R$ 12,00.</p><time>21:45</time></div>
+              <div class="chat-msg out" data-index="7"><p>Se preferir retirar, consigo reservar para retirada na loja as 16h.</p><time>21:45</time></div>
+            </div>
+
+            <div class="phone-input">
+              <button type="button" aria-label="Adicionar anexo">+</button>
+              <span>Mensagem</span>
+              <button type="button" aria-label="Enviar áudio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <div class="demo-text">
+          <div class="demo-intro">
+            <h2>Uma conversa resolve produto, estoque, entrega e retirada.</h2>
+            <p>O cliente pergunta como falaria com uma pessoa. A IA consulta as regras do negócio e responde com informações úteis.</p>
+          </div>
+
+          <div class="scroll-track" id="scrollTrack" aria-label="Etapas da conversa automatica">
+            <div class="track-step" data-target="7">
+              <span class="flow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12a8 8 0 1 1 3.2 6.4L4 20l1.4-3.4A8 8 0 0 1 4 12Z"/></svg>
+              </span>
+              <div>
+                <strong>1. Cliente explica o que precisa</strong>
+                <p>A IA entende o orçamento e identifica que a pessoa quer uma recomendação, não apenas saber o preço.</p>
+              </div>
+            </div>
+            <div class="track-step" data-target="7">
+              <span class="flow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l5 5v13H7V3Z"/><path d="M14 3v6h5M10 13h6M10 17h4"/></svg>
+              </span>
+              <div>
+                <strong>2. AutoFlow consulta estoque</strong>
+                <p>O AutoFlow consulta o estoque e verifica quais produtos atendem ao orçamento da pessoa.</p>
+              </div>
+            </div>
+            <div class="track-step" data-target="7">
+              <span class="flow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h12v9H3V7Z"/><path d="M15 10h3l3 4v2h-6v-6Z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+              </span>
+              <div>
+                <strong>3. Opções de entrega e retirada</strong>
+                <p>Pode oferecer entrega, retirada na loja ou agendamento conforme as regras da empresa.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features-narrative" aria-labelledby="featuresNarrativeTitle">
+    <h2 id="featuresNarrativeTitle">Recursos e benefícios</h2>
+
+    <div class="feature-benefit-grid">
+      <article class="feature-benefit-card">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7a17 17 0 1 1-12 5M24 14v11l7 5M17 7h7v7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>Resposta imediata</h3>
+        <p>Atenda cada contato rapidamente, todos os dias e sem deixar oportunidades esperando.</p>
+      </article>
+      <article class="feature-benefit-card">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M7 24h34M24 7c5 5 7 10 7 17s-2 12-7 17c-5-5-7-10-7-17s2-12 7-17ZM31 31l4 4 7-8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>Disponível 24 horas</h3>
+        <p>A automação funciona sem interrupções para captar e qualificar oportunidades a qualquer momento.</p>
+      </article>
+      <article class="feature-benefit-card">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 36H9a5 5 0 0 1 0-10 10 10 0 0 1 18-7 8 8 0 0 1 12 7 5 5 0 0 1 0 10h-6M18 31l-4 4 4 4M30 39l4-4-4-4" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>Informações conectadas</h3>
+        <p>Reúna WhatsApp, produtos, agenda e regras comerciais em um fluxo de atendimento único.</p>
+      </article>
+    </div>
+
+    <h2 class="features-flow-title">Como funciona</h2>
+    <ol class="feature-flow">
+      <li><span class="feature-flow-icon">W</span><strong>Mensagem no WhatsApp</strong><p>O cliente inicia a conversa.</p></li>
+      <li><span class="feature-flow-icon">IA</span><strong>A IA entende o pedido</strong><p>Ela consulta os dados da empresa.</p></li>
+      <li><span class="feature-flow-icon">↗</span><strong>Resposta personalizada</strong><p>O cliente recebe uma orientação útil.</p></li>
+      <li><span class="feature-flow-icon">✓</span><strong>Mais conversões</strong><p>O atendimento avança para a venda.</p></li>
+    </ol>
+  </section>
+
+  <section class="workflow" id="funciona">
+    <div class="workflow-copy">
+      <h2><span>AutoFlow:</span> o painel<br>que prepara a <span>IA</span><br>para vender melhor.</h2>
+      <p>A empresa cadastra suas informações. O AutoFlow as organiza para responder aos clientes pelo WhatsApp com precisão.</p>
+      <a href="#contato" class="workflow-cta">Começar agora</a>
+    </div>
+
+    <div class="workflow-cards" aria-label="Etapas de configuração do AutoFlow">
+      <article class="workflow-step workflow-step-connect">
+        <svg class="workflow-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 22a10 10 0 1 1 0 20 10 10 0 0 1 0-20Z" fill="none" stroke="currentColor" stroke-width="5"/>
+          <path d="M24 26 15 17M40 26l9-9M24 38l-9 9M40 38l9 9" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+          <path d="M10 12a6 6 0 1 1 12 0 6 6 0 0 1-12 0Zm32 0a6 6 0 1 1 12 0 6 6 0 0 1-12 0ZM10 52a6 6 0 1 1 12 0 6 6 0 0 1-12 0Zm32 0a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z" fill="none" stroke="currentColor" stroke-width="5"/>
+        </svg>
+        <h3>Conecte o WhatsApp</h3>
+        <p>A IA passa a atender clientes usando o tom da empresa e os dados cadastrados no painel.</p>
+      </article>
+
+      <article class="workflow-step workflow-step-register">
+        <svg class="workflow-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 23a9 9 0 1 1 0 18 9 9 0 0 1 0-18Z" fill="none" stroke="currentColor" stroke-width="5"/>
+          <path d="M32 7v9M32 48v9M14.4 14.4l6.4 6.4m22.4 22.4 6.4 6.4M7 32h9m32 0h9M14.4 49.6l6.4-6.4m22.4-22.4 6.4-6.4" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+        <h3>Cadastre sua operação</h3>
+        <p>Produtos, serviços, horários, estoque, regiões de entrega, perguntas frequentes e regras comerciais.</p>
+      </article>
+
+      <article class="workflow-step workflow-step-track">
+        <svg class="workflow-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M29 48a19 19 0 1 1 13.4-5.6L56 56" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+          <path d="M19 38h6V27h8v11h6V21h8" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+          <path d="m38 22 9-1-1 9" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3>Acompanhe tudo</h3>
+        <p>Veja conversas, agendamentos, dúvidas recorrentes, atendimentos resolvidos e casos que precisam de atendimento humano.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="contact" id="contato">
+    <div class="contact-text">
+      <h2>Vamos transformar seu WhatsApp em atendimento automático?</h2>
+      <p>Conte qual é o tipo da sua empresa e quais perguntas seus clientes fazem todos os dias.</p>
+      <a class="whatsapp-link" href="https://wa.me/5500000000000" target="_blank" rel="noopener">
+        Falar agora no WhatsApp <span aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <form class="contact-form" id="contactForm" aria-label="Formulário de contato">
+      <div id="formFields">
+        <div class="contact-form-heading">
+          <h3>Conte sobre sua operação</h3>
+          <p>Preencha os dados abaixo. Nosso time responderá pelo e-mail informado.</p>
+        </div>
+        <label>Nome
+          <input type="text" name="nome" required>
+        </label>
+        <label>Empresa
+          <input type="text" name="empresa" required>
+        </label>
+        <label>E-mail
+          <input type="email" name="email" required>
+        </label>
+        <label>O que você quer automatizar?
+          <textarea name="mensagem" rows="4" placeholder="Ex.: estoque, entrega, agendamentos, dúvidas sobre produtos"></textarea>
+        </label>
+        <button type="submit">Enviar mensagem</button>
+      </div>
+      <div id="formSuccess" class="form-success" hidden>
+        <p class="mono">mensagem enviada</p>
+        <p>Obrigado. Nosso time entra em contato em breve.</p>
+      </div>
+    </form>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>Auto<span class="accent-text">Flow</span></span>
+  <span>2026 - IA de atendimento para empresas no WhatsApp</span>
+</footer>
+
+<script src="script.js"></script>
+<script type="module" src="js/intro-scene.js?v=10"></script>
+<script type="module" src="js/phone-scroll.js"></script>
+<script>
+  window.setTimeout(function () {
+    if (!window.__autoflowIntroDone) {
+      document.body.classList.remove('intro-pending');
+      var introCanvas = document.getElementById('intro-canvas');
+      if (introCanvas) introCanvas.remove();
+    }
+  }, 4500);
+</script>
+</body>
+</html>

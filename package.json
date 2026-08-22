@@ -1,0 +1,16 @@
+{
+  "name": "autoflow-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "create-user": "node scripts/create-user.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.3",
+    "mysql2": "^3.12.0"
+  }
+}
