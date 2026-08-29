@@ -6,7 +6,7 @@ from app.extensions import db
 from app.models import FAQ, KnowledgeDocument
 
 
-class KnowledgeService:
+class KnowledgeSearch:
     @staticmethod
     def search_faq(company_id: int, query_text: str, *, limit: int = 5) -> list[dict]:
         text = (query_text or "").strip()[:200]
@@ -66,3 +66,7 @@ class KnowledgeService:
             }
             for row in rows
         ]
+
+
+# Backwards-compatible alias; use-case Services live in ``app.services.knowledge``.
+KnowledgeService = KnowledgeSearch

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Inventory(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Inventory(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "inventories"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -56,7 +56,7 @@ class Inventory(db.Model, TenantMixin, TimestampMixin, ReprMixin):
         return self.available_quantity <= self.minimum_quantity
 
 
-class InventoryMovement(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class InventoryMovement(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "inventory_movements"
 
     id = db.Column(db.Integer, primary_key=True)

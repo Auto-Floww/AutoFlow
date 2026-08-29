@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Tag(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Tag(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "tags"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -38,7 +38,7 @@ class Tag(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class CustomerTag(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class CustomerTag(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "customer_tags"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -63,7 +63,7 @@ class CustomerTag(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class ConversationTag(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class ConversationTag(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "conversation_tags"
 
     id = db.Column(db.Integer, primary_key=True)

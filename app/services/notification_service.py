@@ -11,7 +11,7 @@ from app.models import AuditLog, CompanyMember, Notification
 from app.services.tenancy import ensure_same_company
 
 
-class NotificationService:
+class NotificationOperations:
     @staticmethod
     def create(
         company_id: int,
@@ -112,3 +112,7 @@ class NotificationService:
         if commit:
             db.session.commit()
         return log
+
+
+# Backwards-compatible alias; use-case Services live in ``app.services.notifications``.
+NotificationService = NotificationOperations

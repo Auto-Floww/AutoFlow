@@ -36,7 +36,7 @@ def normalize_phone(phone: str, default_country_code: str = "55") -> str:
     return normalized
 
 
-class CustomerService:
+class CustomerOperations:
     @staticmethod
     def get(company_id: int, customer_id: int) -> Customer:
         return tenant_get(Customer, company_id, customer_id)
@@ -189,14 +189,14 @@ class CustomerService:
                 customer.crm_stage in {"PROPOSTA", "VENDA"}
                 and customer.crm_stage != previous_stage
             ):
-                from app.services.notification_service import NotificationService
+                from app.services.notification_service import NotificationOperations
 
                 title = (
                     "Oportunidade em proposta"
                     if customer.crm_stage == "PROPOSTA"
                     else "Venda registrada"
                 )
-                NotificationService.create(
+                NotificationOperations.create(
                     company_id,
                     notification_type="IMPORTANT_OPPORTUNITY",
                     title=title,
@@ -258,5 +258,7 @@ class CustomerService:
         return tag
 
 
-get_customer = CustomerService.get
-update_customer = CustomerService.update
+# Backwards-compatible alias; use-case Services live in ``app.services.customers``.
+CustomerService = CustomerOperations
+get_customer = CustomerOperations.get
+update_customer = CustomerOperations.update

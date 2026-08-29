@@ -17,7 +17,7 @@ from flask import current_app, has_app_context
 
 from app.models import AISettings, Company, Conversation
 from app.services.ai_tools import build_default_registry
-from app.services.conversation_service import ConversationService
+from app.services.conversation_service import ConversationOperations
 from app.services.exceptions import ExternalServiceError, ValidationError
 from app.services.tool_registry import ToolContext, ToolRegistry
 
@@ -31,7 +31,7 @@ def _config(name: str, default: Any = None):
     return os.getenv(name, default)
 
 
-class GroqService:
+class GroqGateway:
     def __init__(
         self,
         *,
@@ -239,7 +239,7 @@ REGRAS ABSOLUTAS:
                 }
             )
         messages.extend(
-            ConversationService.groq_history(
+            ConversationOperations.groq_history(
                 company_id,
                 conversation.id,
                 limit=history_limit,
@@ -265,7 +265,7 @@ REGRAS ABSOLUTAS:
         after_message_id: int = 0,
         through_message_id: int | None = None,
     ) -> str:
-        history = ConversationService.groq_history_range(
+        history = ConversationOperations.groq_history_range(
             conversation.company_id,
             conversation.id,
             after_message_id=after_message_id,
@@ -296,3 +296,7 @@ REGRAS ABSOLUTAS:
         ]
         response = self.chat_completion(messages, temperature=0.0, max_tokens=700)
         return (response["choices"][0]["message"].get("content") or "").strip()
+
+
+# Backwards-compatible alias; AI use cases live in ``app.services.ai``.
+GroqService = GroqGateway

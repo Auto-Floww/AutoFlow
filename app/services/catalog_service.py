@@ -7,7 +7,7 @@ from app.models import Product, ProductVariant
 from app.services.exceptions import NotFoundError, ValidationError
 
 
-class CatalogService:
+class CatalogQueries:
     @staticmethod
     def search(
         company_id: int,
@@ -96,3 +96,7 @@ class CatalogService:
         if include_inventory and product.inventory:
             result["available_quantity"] = product.inventory.available_quantity
         return result
+
+
+# Backwards-compatible alias; use-case Services live in ``app.services.catalog``.
+CatalogService = CatalogQueries

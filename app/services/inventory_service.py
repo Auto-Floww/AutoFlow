@@ -10,7 +10,7 @@ from app.services.exceptions import ConflictError, NotFoundError, ValidationErro
 from app.services.tenancy import ensure_same_company, tenant_get
 
 
-class InventoryService:
+class InventoryOperations:
     @staticmethod
     def get(company_id: int, inventory_id: int, *, lock: bool = False) -> Inventory:
         return tenant_get(Inventory, company_id, inventory_id, lock=lock)
@@ -166,7 +166,7 @@ class InventoryService:
         try:
             db.session.flush()
             if inventory.is_low_stock:
-                from app.services.notification_service import NotificationService
+                from app.services.notification_service import NotificationOperations
 
                 catalog_name = (
                     inventory.variant.name
@@ -177,7 +177,7 @@ class InventoryService:
                         else inventory.product.name
                     )
                 )
-                NotificationService.create(
+                NotificationOperations.create(
                     company_id,
                     notification_type="LOW_STOCK",
                     title="Estoque baixo",
@@ -217,7 +217,7 @@ class InventoryService:
         delta = target - inventory.quantity
         if not delta:
             return None
-        return InventoryService.adjust_stock(
+        return InventoryOperations.adjust_stock(
             company_id,
             inventory_id,
             quantity_delta=delta,
@@ -270,4 +270,6 @@ class InventoryService:
         ).all()
 
 
-adjust_stock = InventoryService.adjust_stock
+# Backwards-compatible alias; use-case Services live in ``app.services.inventory``.
+InventoryService = InventoryOperations
+adjust_stock = InventoryOperations.adjust_stock

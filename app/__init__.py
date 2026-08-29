@@ -167,7 +167,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.routes.products import bp as products_bp
     from app.routes.settings import bp as settings_bp
     from app.routes.whatsapp import bp as whatsapp_bp
-    from backend.controllers import whatsapp_qrcode_bp
+    from app.controllers.whatsapp import whatsapp_qrcode_bp
 
     for blueprint in (
         auth_bp,

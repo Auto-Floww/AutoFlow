@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
 professional_services = db.Table(
@@ -37,7 +37,7 @@ professional_services = db.Table(
 )
 
 
-class Service(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Service(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "services"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -74,7 +74,7 @@ class Service(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class Professional(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Professional(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "professionals"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -116,7 +116,7 @@ class Professional(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class BusinessHour(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class BusinessHour(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "business_hours"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -148,7 +148,7 @@ class BusinessHour(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class ScheduleBlock(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class ScheduleBlock(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "schedule_blocks"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -172,7 +172,7 @@ class ScheduleBlock(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class Appointment(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Appointment(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "appointments"
 
     id = db.Column(db.Integer, primary_key=True)

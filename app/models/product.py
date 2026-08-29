@@ -7,10 +7,10 @@ from decimal import Decimal
 from sqlalchemy.orm import synonym
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Product(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Product(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "products"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -57,7 +57,7 @@ class Product(db.Model, TenantMixin, TimestampMixin, ReprMixin):
         return self.promotional_price if self.promotional_price is not None else self.price
 
 
-class ProductVariant(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class ProductVariant(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "product_variants"
 
     id = db.Column(db.Integer, primary_key=True)

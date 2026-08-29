@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Conversation(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Conversation(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "conversations"
 
     id = db.Column(db.Integer, primary_key=True)

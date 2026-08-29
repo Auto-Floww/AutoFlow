@@ -32,7 +32,7 @@ def _positive_setting(name: str, default: int) -> int:
         return default
 
 
-class QuotaService:
+class InboundQuotaPolicy:
     """Serialize check-and-insert capacity per company using its database row."""
 
     @staticmethod
@@ -135,3 +135,7 @@ class QuotaService:
                 )
 
         return None
+
+
+# Backwards-compatible alias; the use case is ``EnforceInboundQuotaService``.
+QuotaService = InboundQuotaPolicy

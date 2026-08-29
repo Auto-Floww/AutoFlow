@@ -6,10 +6,10 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
-from app.models.base import ReprMixin, TimestampMixin, utcnow
+from app.models.base import CrudMixin, ReprMixin, TimestampMixin, utcnow
 
 
-class User(db.Model, UserMixin, TimestampMixin, ReprMixin):
+class User(db.Model, CrudMixin, UserMixin, TimestampMixin, ReprMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)

@@ -11,7 +11,7 @@ from flask import current_app
 from app.services.exceptions import ExternalServiceError
 
 
-class EmailService:
+class EmailGateway:
     """Adaptador SMTP pequeno para mensagens transacionais do AutoFlow."""
 
     @staticmethod
@@ -70,3 +70,7 @@ class EmailService:
                 "Email delivery is temporarily unavailable", retryable=True
             ) from exc
         return {"status": "sent"}
+
+
+# Backwards-compatible alias; sending reset mail is an ``auth`` use case.
+EmailService = EmailGateway

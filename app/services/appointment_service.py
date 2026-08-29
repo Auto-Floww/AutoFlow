@@ -56,7 +56,7 @@ def _to_local(value: datetime, timezone_name: str) -> datetime:
     return value.replace(tzinfo=timezone.utc).astimezone(_timezone(timezone_name))
 
 
-class AppointmentService:
+class AppointmentOperations:
     @staticmethod
     def _company(company_id: int) -> Company:
         company = Company.query.filter_by(id=int(company_id)).one_or_none()
@@ -110,17 +110,17 @@ class AppointmentService:
 
     @staticmethod
     def normalize_datetime(company_id: int, value: datetime | str) -> datetime:
-        company = AppointmentService._company(company_id)
+        company = AppointmentOperations._company(company_id)
         return _parse_datetime(value, company.timezone)
 
     @staticmethod
     def to_local(company_id: int, value: datetime) -> datetime:
-        company = AppointmentService._company(company_id)
+        company = AppointmentOperations._company(company_id)
         return _to_local(value, company.timezone)
 
     @staticmethod
     def _within_booking_window(company: Company, start_utc: datetime) -> bool:
-        rules = AppointmentService.booking_rules(company)
+        rules = AppointmentOperations.booking_rules(company)
         now_utc = utcnow()
         earliest = now_utc + timedelta(hours=rules["minimum_notice_hours"])
         latest = now_utc + timedelta(days=rules["booking_window_days"])
@@ -196,7 +196,7 @@ class AppointmentService:
         lock_professional: bool = False,
         lock_conflicts: bool | None = None,
     ) -> tuple[bool, datetime, datetime]:
-        company = AppointmentService._company(company_id)
+        company = AppointmentOperations._company(company_id)
         professional_query = Professional.for_company(company_id).filter(
             Professional.id == professional_id, Professional.is_active.is_(True)
         )
@@ -217,13 +217,13 @@ class AppointmentService:
         )
         local_start = _to_local(start_utc, company.timezone)
         local_end = _to_local(end_utc, company.timezone)
-        window = AppointmentService._business_window(
+        window = AppointmentOperations._business_window(
             company_id, professional.id, local_start.date()
         )
         if window is None or local_start.date() != local_end.date():
             return False, start_utc, end_utc
         opens_at, closes_at = window
-        rules = AppointmentService.booking_rules(company)
+        rules = AppointmentOperations.booking_rules(company)
         opening_minutes = opens_at.hour * 60 + opens_at.minute
         start_minutes = local_start.hour * 60 + local_start.minute
         aligned_to_slot = (
@@ -233,10 +233,10 @@ class AppointmentService:
             tzinfo=None
         ) <= closes_at
         available = (
-            AppointmentService._within_booking_window(company, start_utc)
+            AppointmentOperations._within_booking_window(company, start_utc)
             and aligned_to_slot
             and within_hours
-            and not AppointmentService._overlap_exists(
+            and not AppointmentOperations._overlap_exists(
             company_id,
             professional.id,
             start_utc,
@@ -256,7 +256,7 @@ class AppointmentService:
         step_minutes: int | None = None,
         limit: int = 30,
     ) -> list[dict]:
-        company = AppointmentService._company(company_id)
+        company = AppointmentOperations._company(company_id)
         if isinstance(day, str):
             try:
                 local_day = date.fromisoformat(day)
@@ -271,7 +271,7 @@ class AppointmentService:
         professionals = query.all()
         results: list[dict] = []
         tenant_tz = _timezone(company.timezone)
-        rules = AppointmentService.booking_rules(company)
+        rules = AppointmentOperations.booking_rules(company)
         earliest_utc = utcnow() + timedelta(hours=rules["minimum_notice_hours"])
         latest_utc = utcnow() + timedelta(days=rules["booking_window_days"])
         # A granularidade é política da empresa e não pode ser substituída pelo cliente.
@@ -280,7 +280,7 @@ class AppointmentService:
         for professional in professionals:
             if professional.services and service not in professional.services:
                 continue
-            window = AppointmentService._business_window(
+            window = AppointmentOperations._business_window(
                 company_id, professional.id, local_day
             )
             if window is None:
@@ -290,7 +290,7 @@ class AppointmentService:
             while local_cursor + duration <= local_close and len(results) < min(limit, 100):
                 start_utc = local_cursor.astimezone(timezone.utc).replace(tzinfo=None)
                 end_utc = start_utc + duration
-                if earliest_utc <= start_utc <= latest_utc and not AppointmentService._overlap_exists(
+                if earliest_utc <= start_utc <= latest_utc and not AppointmentOperations._overlap_exists(
                     company_id, professional.id, start_utc, end_utc
                 ):
                     results.append(
@@ -348,7 +348,7 @@ class AppointmentService:
             ).with_for_update().one_or_none()
             if existing:
                 return existing
-        available, start_utc, end_utc = AppointmentService.is_available(
+        available, start_utc, end_utc = AppointmentOperations.is_available(
             company_id,
             professional_id=professional_id,
             service_id=service_id,
@@ -408,6 +408,8 @@ class AppointmentService:
         return appointment
 
 
-get_available_appointments = AppointmentService.available_slots
-create_appointment = AppointmentService.create
-cancel_appointment = AppointmentService.cancel
+# Backwards-compatible import for integrations that still use the former facade.
+AppointmentService = AppointmentOperations
+get_available_appointments = AppointmentOperations.available_slots
+create_appointment = AppointmentOperations.create
+cancel_appointment = AppointmentOperations.cancel

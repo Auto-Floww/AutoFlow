@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class FAQ(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class FAQ(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "faqs"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -21,7 +21,7 @@ class FAQ(db.Model, TenantMixin, TimestampMixin, ReprMixin):
     )
 
 
-class KnowledgeDocument(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class KnowledgeDocument(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "knowledge_documents"
 
     id = db.Column(db.Integer, primary_key=True)

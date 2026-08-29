@@ -13,7 +13,7 @@ from app.services.exceptions import AuthorizationError, ConflictError, Validatio
 from app.services.tenancy import ensure_same_company, tenant_get
 
 
-class ConversationService:
+class ConversationOperations:
     @staticmethod
     def get(company_id: int, conversation_id: int, *, lock: bool = False) -> Conversation:
         return tenant_get(Conversation, company_id, conversation_id, lock=lock)
@@ -239,9 +239,9 @@ class ConversationService:
             memory["handoff_sequence"] = int(memory.get("handoff_sequence") or 0) + 1
         conversation.memory_json = memory
         if new_handoff:
-            from app.services.notification_service import NotificationService
+            from app.services.notification_service import NotificationOperations
 
-            NotificationService.create(
+            NotificationOperations.create(
                 company_id,
                 notification_type="HUMAN_REQUESTED",
                 title="Cliente solicitou atendimento humano",
@@ -314,7 +314,7 @@ class ConversationService:
         through_message_id: int | None = None,
     ) -> list[dict[str, str]]:
         history: list[dict[str, str]] = []
-        for message in ConversationService.recent_messages(
+        for message in ConversationOperations.recent_messages(
             company_id,
             conversation_id,
             limit=limit,
@@ -444,4 +444,6 @@ class ConversationService:
         return message
 
 
-transfer_to_human = ConversationService.transfer_to_human
+# Backwards-compatible alias; use-case Services live in ``app.services.conversations``.
+ConversationService = ConversationOperations
+transfer_to_human = ConversationOperations.transfer_to_human

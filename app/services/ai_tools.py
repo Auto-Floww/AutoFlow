@@ -11,15 +11,15 @@ from pydantic import Field
 from app.extensions import db
 from app.models import BusinessHour, Company, Conversation, Customer, ProductVariant
 from app.models.base import utcnow
-from app.services.appointment_service import AppointmentService
-from app.services.catalog_service import CatalogService
-from app.services.conversation_service import ConversationService
-from app.services.customer_service import CustomerService
-from app.services.delivery_service import DeliveryService
+from app.services.appointment_service import AppointmentOperations
+from app.services.catalog_service import CatalogQueries
+from app.services.conversation_service import ConversationOperations
+from app.services.customer_service import CustomerOperations
+from app.services.delivery_service import DeliveryOptionsCalculator
 from app.services.exceptions import NotFoundError, ValidationError
-from app.services.inventory_service import InventoryService
-from app.services.knowledge_service import KnowledgeService
-from app.services.notification_service import NotificationService
+from app.services.inventory_service import InventoryOperations
+from app.services.knowledge_service import KnowledgeSearch
+from app.services.notification_service import NotificationOperations
 from app.services.tool_registry import ToolContext, ToolInput, ToolRegistry, ToolSpec
 
 
@@ -153,17 +153,17 @@ def _record_product_consultations(context: ToolContext, products: list[dict]) ->
 
 
 def _search_products(context: ToolContext, query=None, category=None, limit=8):
-    rows = CatalogService.search(
+    rows = CatalogQueries.search(
         context.company_id, query_text=query, category=category, limit=limit
     )
-    result = [CatalogService.serialize(product) for product in rows]
+    result = [CatalogQueries.serialize(product) for product in rows]
     _record_product_consultations(context, result)
     return result
 
 
 def _get_product(context: ToolContext, product_id=None, sku=None):
-    result = CatalogService.serialize(
-        CatalogService.get(context.company_id, product_id=product_id, sku=sku)
+    result = CatalogQueries.serialize(
+        CatalogQueries.get(context.company_id, product_id=product_id, sku=sku)
     )
     _record_product_consultations(context, [result])
     return result
@@ -179,7 +179,7 @@ def _check_inventory(
 ):
     if not any((product_id, variant_id, sku)):
         raise ValidationError("product_id, variant_id, or sku is required")
-    rows = InventoryService.find_for_catalog(
+    rows = InventoryOperations.find_for_catalog(
         context.company_id,
         product_id=product_id,
         variant_id=variant_id,
@@ -215,7 +215,7 @@ def _check_inventory(
 
 
 def _delivery_options(context: ToolContext, **arguments):
-    return DeliveryService.options(context.company_id, **arguments)
+    return DeliveryOptionsCalculator.options(context.company_id, **arguments)
 
 
 def _business_hours(context: ToolContext, professional_id=None, weekday=None):
@@ -246,17 +246,17 @@ def _business_hours(context: ToolContext, professional_id=None, weekday=None):
 
 
 def _search_faq(context: ToolContext, query, limit=5):
-    return KnowledgeService.search_faq(context.company_id, query, limit=limit)
+    return KnowledgeSearch.search_faq(context.company_id, query, limit=limit)
 
 
 def _search_knowledge(context: ToolContext, query, limit=5):
-    return KnowledgeService.search_knowledge(context.company_id, query, limit=limit)
+    return KnowledgeSearch.search_knowledge(context.company_id, query, limit=limit)
 
 
 def _available_appointments(
     context: ToolContext, service_id, date, professional_id=None, limit=12
 ):
-    return AppointmentService.available_slots(
+    return AppointmentOperations.available_slots(
         context.company_id,
         service_id=service_id,
         day=date,
@@ -283,7 +283,7 @@ def _create_appointment(
         f"{service_id}:{professional_id}:{starts_at}"
     )
     idempotency_key = "ai:" + hashlib.sha256(material.encode()).hexdigest()
-    appointment = AppointmentService.create(
+    appointment = AppointmentOperations.create(
         context.company_id,
         customer_id=tenant_customer_id,
         service_id=service_id,
@@ -292,7 +292,7 @@ def _create_appointment(
         notes=notes,
         idempotency_key=idempotency_key,
     )
-    NotificationService.create(
+    NotificationOperations.create(
         context.company_id,
         notification_type="NEW_APPOINTMENT",
         title="Novo agendamento",
@@ -315,13 +315,13 @@ def _create_appointment(
 def _cancel_appointment(context: ToolContext, appointment_id, reason=None):
     if not context.customer_id:
         raise ValidationError("No customer is associated with this conversation")
-    existing = AppointmentService.get(context.company_id, appointment_id)
+    existing = AppointmentOperations.get(context.company_id, appointment_id)
     if existing.customer_id != context.customer_id:
         raise NotFoundError("Appointment not found")
-    appointment = AppointmentService.cancel(
+    appointment = AppointmentOperations.cancel(
         context.company_id, appointment_id, reason=reason
     )
-    NotificationService.create(
+    NotificationOperations.create(
         context.company_id,
         notification_type="APPOINTMENT_CANCELLED",
         title="Agendamento cancelado",
@@ -338,8 +338,8 @@ def _get_customer(context: ToolContext, customer_id=None, phone=None):
         raise ValidationError("No customer is associated with this conversation")
     if customer_id and customer_id != context.customer_id:
         raise ValidationError("The AI may only access the current customer")
-    customer = CustomerService.get(context.company_id, context.customer_id)
-    if phone and CustomerService.find_by_phone(context.company_id, phone) != customer:
+    customer = CustomerOperations.get(context.company_id, context.customer_id)
+    if phone and CustomerOperations.find_by_phone(context.company_id, phone) != customer:
         raise NotFoundError("Customer not found")
     return _customer_dict(customer)
 
@@ -350,7 +350,7 @@ def _update_customer(context: ToolContext, customer_id=None, **changes):
         raise ValidationError("No customer is associated with this conversation")
     if customer_id and customer_id != context.customer_id:
         raise ValidationError("The AI may only update the current customer")
-    customer = CustomerService.update(context.company_id, target, **changes)
+    customer = CustomerOperations.update(context.company_id, target, **changes)
     return _customer_dict(customer)
 
 
@@ -360,7 +360,7 @@ def _add_customer_tag(context: ToolContext, tag_name, customer_id=None):
         raise ValidationError("No customer is associated with this conversation")
     if customer_id and customer_id != context.customer_id:
         raise ValidationError("The AI may only tag the current customer")
-    tag = CustomerService.add_tag(
+    tag = CustomerOperations.add_tag(
         context.company_id, target, tag_name=tag_name
     )
     return {"customer_id": target, "tag_id": tag.id, "tag_name": tag.name}
@@ -369,7 +369,7 @@ def _add_customer_tag(context: ToolContext, tag_name, customer_id=None):
 def _transfer_to_human(context: ToolContext, reason=None):
     if not context.conversation_id:
         raise ValidationError("No conversation is associated with this request")
-    conversation = ConversationService.transfer_to_human(
+    conversation = ConversationOperations.transfer_to_human(
         context.company_id, context.conversation_id, reason=reason
     )
     return {

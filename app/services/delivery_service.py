@@ -12,7 +12,7 @@ def _digits(value: str | None) -> str:
     return "".join(character for character in (value or "") if character.isdigit())
 
 
-class DeliveryService:
+class DeliveryOptionsCalculator:
     @staticmethod
     def options(
         company_id: int,
@@ -62,3 +62,7 @@ class DeliveryService:
             }
             for _, rule in matches
         ]
+
+
+# Backwards-compatible alias; the use case is ``GetDeliveryOptionsService``.
+DeliveryService = DeliveryOptionsCalculator

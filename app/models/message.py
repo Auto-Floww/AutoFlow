@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Message(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class Message(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "messages"
 
     id = db.Column(db.Integer, primary_key=True)

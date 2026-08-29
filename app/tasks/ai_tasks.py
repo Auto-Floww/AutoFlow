@@ -14,14 +14,21 @@ from app.extensions import db
 from app.models import AISettings, Appointment, Conversation, Message, User
 from app.models.base import utcnow
 from app.security import decrypt_secret
-from app.services.conversation_service import ConversationService
-from app.services.email_service import EmailService
+from app.services.ai import AnswerConversationService, SummarizeConversationService
+from app.services.auth import SendPasswordResetEmailService
+from app.services.conversations import (
+    RecordOutboundMessageService,
+    SetConversationSummaryService,
+)
 from app.services.exceptions import DomainError, ExternalServiceError
-from app.services.groq_service import GroqService
-from app.services.notification_service import NotificationService
-from app.services.outbox_service import OutboxService
+from app.services.notifications import CreateNotificationService
+from app.services.outbox import (
+    DispatchOutboxBestEffortService,
+    DispatchPendingOutboxService,
+    EnqueueOutboxTaskService,
+)
 from app.services.tenancy import tenant_get
-from app.services.whatsapp_service import WhatsAppService
+from app.services.whatsapp import SendWhatsAppTextService
 
 
 PROCESSING_LEASE = timedelta(minutes=5)
@@ -136,7 +143,7 @@ def process_message(self, message_id: int) -> dict:
             .first()
         )
         through_message_id = max(message.id, batch_tail.id if batch_tail else message.id)
-        answer, ai_metadata = GroqService().answer_conversation(
+        answer, ai_metadata = AnswerConversationService().execute(
             conversation, through_message_id=through_message_id
         )
 
@@ -153,7 +160,7 @@ def process_message(self, message_id: int) -> dict:
             _release_conversation(conversation.id, inbound.id)
             db.session.commit()
             return {"status": "ai_paused_before_persist", "message_id": inbound.id}
-        outbound = ConversationService.record_outbound(
+        outbound = RecordOutboundMessageService().execute(
             company_id,
             conversation_id=conversation.id,
             content=answer,
@@ -175,7 +182,7 @@ def process_message(self, message_id: int) -> dict:
             batched.processing_status = "PROCESSED"
             batched.processed_at = processed_at
         _release_conversation(conversation.id, inbound.id)
-        send_outbox = OutboxService.enqueue(
+        send_outbox = EnqueueOutboxTaskService().execute(
             "send_whatsapp_message",
             {"message_id": outbound.id},
             idempotency_key=f"send-whatsapp-message:{outbound.id}",
@@ -193,7 +200,7 @@ def process_message(self, message_id: int) -> dict:
         ).count()
         summary_outbox = None
         if unsummarized_count >= threshold:
-            summary_outbox = OutboxService.enqueue(
+            summary_outbox = EnqueueOutboxTaskService().execute(
                 "generate_summary",
                 {"conversation_id": conversation.id},
                 idempotency_key=(
@@ -202,9 +209,9 @@ def process_message(self, message_id: int) -> dict:
                 company_id=company_id,
             )
         db.session.commit()
-        OutboxService.dispatch_best_effort(send_outbox.id)
+        DispatchOutboxBestEffortService().execute(send_outbox.id)
         if summary_outbox is not None:
-            OutboxService.dispatch_best_effort(summary_outbox.id)
+            DispatchOutboxBestEffortService().execute(summary_outbox.id)
         return {
             "status": "processed",
             "message_id": inbound.id,
@@ -331,7 +338,7 @@ def send_whatsapp_message(self, message_id: int) -> dict:
     message.ai_metadata_json = send_metadata
     db.session.commit()
     try:
-        result = WhatsAppService().send_text(
+        result = SendWhatsAppTextService().execute(
             company_id,
             to=phone,
             text=content,
@@ -408,12 +415,12 @@ def generate_summary(self, conversation_id: int) -> dict:
         return {"status": "current", "conversation_id": conversation.id}
     cursor = batch[-1].id
     try:
-        summary = GroqService().summarize_conversation(
+        summary = SummarizeConversationService().execute(
             conversation,
             after_message_id=previous_cursor,
             through_message_id=cursor,
         )
-        ConversationService.set_summary(
+        SetConversationSummaryService().execute(
             company_id,
             conversation.id,
             summary=summary,
@@ -442,7 +449,7 @@ def password_reset_email(
     # Unknown addresses deliberately produce an empty outbox payload and execute
     # this same task path. It must remain a side-effect-free success.
     if user_id is None or not reset_token_encrypted:
-        return EmailService.send_password_reset(None, None)
+        return SendPasswordResetEmailService().execute(None, None)
 
     user = db.session.get(User, int(user_id))
     if user is None or not user.is_active:
@@ -470,7 +477,7 @@ def password_reset_email(
     app_url = str(current_app.config["APP_URL"]).rstrip("/") + "/"
     reset_url = urljoin(app_url, f"reset-password/{quote(token, safe='')}")
     try:
-        result = EmailService.send_password_reset(user.email, reset_url)
+        result = SendPasswordResetEmailService().execute(user.email, reset_url)
     except ExternalServiceError as exc:
         if exc.retryable:
             raise self.retry(
@@ -485,7 +492,7 @@ def password_reset_email(
 def dispatch_task_outbox(limit: int | None = None) -> dict[str, int]:
     """Celery beat entrypoint that republishes due transactional outbox rows."""
 
-    return OutboxService.dispatch_pending(limit=limit)
+    return DispatchPendingOutboxService().execute(limit=limit)
 
 
 @shared_task(name="app.tasks.send_notification", acks_late=True)
@@ -499,7 +506,7 @@ def send_notification(
     data: dict | None = None,
     idempotency_key: str | None = None,
 ) -> dict:
-    rows = NotificationService.create(
+    rows = CreateNotificationService().execute(
         company_id,
         notification_type=notification_type,
         title=title,
@@ -524,7 +531,7 @@ def process_appointment(appointment_id: int, event: str = "created") -> dict:
         "reminder": "Lembrete de agendamento",
     }
     title = titles.get(event, "Agendamento atualizado")
-    notifications = NotificationService.create(
+    notifications = CreateNotificationService().execute(
         appointment.company_id,
         notification_type=f"APPOINTMENT_{event.upper()}",
         title=title,

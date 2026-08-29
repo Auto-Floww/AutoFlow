@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TimestampMixin, utcnow
+from app.models.base import CrudMixin, ReprMixin, TimestampMixin, utcnow
 
 
 OUTBOX_TASK_NAMES = (
@@ -16,7 +16,7 @@ OUTBOX_TASK_NAMES = (
 )
 
 
-class TaskOutbox(db.Model, TimestampMixin, ReprMixin):
+class TaskOutbox(db.Model, CrudMixin, TimestampMixin, ReprMixin):
     """A task intent committed atomically with the domain state that created it."""
 
     __tablename__ = "task_outbox"

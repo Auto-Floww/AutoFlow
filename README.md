@@ -20,7 +20,7 @@ puro.
 - Flask-Login, CSRF, CORS, rate limiting e isolamento por `company_id`;
 - templates Jinja2 e assets HTML5/CSS3/JavaScript ES6+;
 - Groq API para IA e tool calling, sem acesso direto da IA ao banco;
-- Evolution API v2 encapsulada em Service externo e executada em stack Docker isolada;
+- Evolution API v2 encapsulada em gateway HTTP e executada em stack Docker isolada;
 - Celery, Redis e transactional outbox para processamento assíncrono durável;
 - Pytest com SQLite em memória para testes isolados;
 - Gunicorn e Docker Compose para execução em contêineres.
@@ -32,25 +32,27 @@ demorado ao worker:
 WhatsApp -> Flask webhook -> banco + outbox -> Celery -> Groq/tools -> WhatsApp
 ```
 
-Para os casos de uso novos, a separação adotada é:
+Toda a aplicação Python fica sob um único pacote `app`; não existe uma segunda
+árvore `backend`. A separação adotada é:
 
 ```text
-backend/controllers/   # classes que traduzem HTTP e chamam um Service
-backend/services/      # uma classe por ação/caso de uso
-backend/models/        # exportação das entidades de domínio
-backend/repositories/  # apenas consultas especiais; não duplica CRUD simples
-frontend/              # documentação e fronteira do frontend
-app/models/            # Models SQLAlchemy e persistência convencional
-app/templates/         # páginas Jinja2
-app/static/            # JavaScript e CSS que consomem as APIs
+app/routes/                  # wiring fino dos Blueprints
+app/controllers/             # classes que traduzem HTTP e chamam casos de uso
+app/services/<dominio>/      # uma classe por ação, sempre com execute()
+app/models/                  # Models SQLAlchemy com contrato CRUD compartilhado
+app/templates/               # páginas Jinja2
+app/static/                  # JavaScript e CSS que consomem as APIs
 ```
 
 A geração do QR Code é a implementação de referência: o frontend chama
 `POST /settings/whatsapp/qrcode`; `WhatsAppQrCodeController` interpreta a
 requisição; `GenerateWhatsAppQrCodeService` executa somente esse caso de uso;
-e `WhatsAppService` encapsula a comunicação HTTP com a Evolution API. Como o
+e o gateway do WhatsApp encapsula a comunicação HTTP com a Evolution API. Como o
 acesso ao banco é uma consulta simples por empresa, não foi criado um
 Repository redundante.
+
+As convenções, o fluxo entre camadas, o contrato CRUD e as regras para novos
+casos de uso estão detalhados em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ## Funcionalidades Implementadas
 

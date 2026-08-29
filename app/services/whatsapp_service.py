@@ -17,11 +17,11 @@ from flask import current_app, has_app_context
 from app.extensions import db
 from app.models import WhatsAppIntegration
 from app.models.base import utcnow
-from app.services.conversation_service import ConversationService
-from app.services.customer_service import CustomerService
+from app.services.conversation_service import ConversationOperations
+from app.services.customer_service import CustomerOperations
 from app.services.exceptions import ExternalServiceError, ValidationError
-from app.services.outbox_service import OutboxService
-from app.services.quota_service import QuotaService
+from app.services.outbox_service import OutboxDispatcher
+from app.services.quota_service import InboundQuotaPolicy
 
 
 INSTANCE_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,100}$")
@@ -33,7 +33,7 @@ def _setting(name: str, default=None):
     return os.getenv(name, default)
 
 
-class WhatsAppService:
+class WhatsAppGateway:
     """Evolution v2 adapter kept behind the existing WhatsApp domain API."""
 
     def __init__(
@@ -182,7 +182,7 @@ class WhatsAppService:
             if integration is None:
                 continue
             company_id = integration.company_id
-            existing = QuotaService.enforce_inbound(
+            existing = InboundQuotaPolicy.enforce_inbound(
                 company_id,
                 sender=event["from"],
                 external_message_id=event["external_message_id"],
@@ -202,13 +202,13 @@ class WhatsAppService:
                     }
                 )
                 continue
-            customer = CustomerService.upsert_from_whatsapp(
+            customer = CustomerOperations.upsert_from_whatsapp(
                 company_id,
                 phone=event["from"],
                 name=event.get("name"),
                 commit=False,
             )
-            conversation, new_conversation = ConversationService.get_or_create(
+            conversation, new_conversation = ConversationOperations.get_or_create(
                 company_id,
                 customer_id=customer.id,
                 channel="WHATSAPP",
@@ -216,7 +216,7 @@ class WhatsAppService:
                 whatsapp_integration_id=integration.id,
                 commit=False,
             )
-            message, created = ConversationService.record_inbound(
+            message, created = ConversationOperations.record_inbound(
                 company_id,
                 conversation_id=conversation.id,
                 content=event["content"],
@@ -226,9 +226,9 @@ class WhatsAppService:
                 commit=False,
             )
             if new_conversation:
-                from app.services.notification_service import NotificationService
+                from app.services.notification_service import NotificationOperations
 
-                NotificationService.create(
+                NotificationOperations.create(
                     company_id,
                     notification_type="NEW_CONVERSATION",
                     title="Nova conversa",
@@ -238,7 +238,7 @@ class WhatsAppService:
                     idempotency_key=f"new-conversation:{conversation.id}",
                     commit=False,
                 )
-            outbox = OutboxService.enqueue(
+            outbox = OutboxDispatcher.enqueue(
                 "process_message",
                 {"message_id": message.id},
                 idempotency_key=f"process-message:{message.id}",
@@ -414,3 +414,7 @@ class WhatsAppService:
         integration.status = "DISCONNECTED"
         integration.last_error = None
         db.session.commit()
+
+
+# Backwards-compatible alias; WhatsApp use cases live in ``app.services.whatsapp``.
+WhatsAppService = WhatsAppGateway

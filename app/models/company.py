@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, TimestampMixin
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class Company(db.Model, TimestampMixin, ReprMixin):
+class Company(db.Model, CrudMixin, TimestampMixin, ReprMixin):
     __tablename__ = "companies"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +41,7 @@ class Company(db.Model, TimestampMixin, ReprMixin):
         return self.status in {"ACTIVE", "TRIAL"}
 
 
-class CompanyMember(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class CompanyMember(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "company_members"
 
     id = db.Column(db.Integer, primary_key=True)

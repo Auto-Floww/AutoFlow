@@ -10,7 +10,7 @@ from app.extensions import db
 from app.models import WhatsAppIntegration
 from app.services.exceptions import ExternalServiceError
 from app.services.whatsapp_service import WhatsAppService
-from backend.services.generate_whatsapp_qrcode_service import (
+from app.services.whatsapp.generate_whatsapp_qrcode_service import (
     GenerateWhatsAppQrCodeService,
 )
 

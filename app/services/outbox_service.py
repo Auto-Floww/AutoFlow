@@ -34,7 +34,7 @@ TASK_PAYLOAD_KEYS = {
 }
 
 
-class OutboxService:
+class OutboxDispatcher:
     """Persist task intent first; broker delivery is a recoverable second step."""
 
     @staticmethod
@@ -118,7 +118,7 @@ class OutboxService:
         entry.attempts += 1
         entry.last_attempt_at = now
         try:
-            task = OutboxService._resolve_task(entry.task_name)
+            task = OutboxDispatcher._resolve_task(entry.task_name)
             task.apply_async(
                 kwargs=dict(entry.payload_json or {}),
                 task_id=f"autoflow-outbox-{entry.id}",
@@ -153,7 +153,7 @@ class OutboxService:
         if not current_app.config.get("OUTBOX_IMMEDIATE_DISPATCH", True):
             return False
         try:
-            return OutboxService.dispatch_one(entry_id)
+            return OutboxDispatcher.dispatch_one(entry_id)
         except Exception:
             db.session.rollback()
             current_app.logger.exception(
@@ -185,8 +185,12 @@ class OutboxService:
         dispatched = 0
         pending = 0
         for entry_id in ids:
-            if OutboxService.dispatch_one(entry_id):
+            if OutboxDispatcher.dispatch_one(entry_id):
                 dispatched += 1
             else:
                 pending += 1
         return {"selected": len(ids), "dispatched": dispatched, "pending": pending}
+
+
+# Backwards-compatible alias; use-case Services live in ``app.services.outbox``.
+OutboxService = OutboxDispatcher

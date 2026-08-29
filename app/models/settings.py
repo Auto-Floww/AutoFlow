@@ -6,7 +6,7 @@ from app.extensions import db
 from app.models.base import CrudMixin, ReprMixin, TenantMixin, TimestampMixin
 
 
-class AISettings(db.Model, TenantMixin, TimestampMixin, ReprMixin):
+class AISettings(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
     __tablename__ = "ai_settings"
 
     id = db.Column(db.Integer, primary_key=True)

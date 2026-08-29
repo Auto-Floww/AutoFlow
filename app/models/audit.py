@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from app.extensions import db
-from app.models.base import ReprMixin, TenantMixin, utcnow
+from app.models.base import CrudMixin, ReprMixin, TenantMixin, utcnow
 
 
-class AuditLog(db.Model, TenantMixin, ReprMixin):
+class AuditLog(db.Model, CrudMixin, TenantMixin, ReprMixin):
     __tablename__ = "audit_logs"
 
     id = db.Column(
