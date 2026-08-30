@@ -1,0 +1,35 @@
+services:
+  mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+
+  web:
+    command: >-
+      sh -c "flask --app run:app db upgrade &&
+      gunicorn --workers 1 --threads 4 --timeout 90 --bind 0.0.0.0:5000 run:app"
+    ports: !override []
+
+  worker:
+    command: celery -A celery_worker.celery worker --loglevel=INFO --concurrency=1
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

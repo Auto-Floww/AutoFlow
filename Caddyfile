@@ -1,0 +1,4 @@
+164-152-52-7.sslip.io {
+    encode zstd gzip
+    reverse_proxy web:5000
+}

@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=autoflow:autoflow app ./app
 COPY --chown=autoflow:autoflow migrations ./migrations
+COPY --chown=autoflow:autoflow index.html style.css script.js ./
+COPY --chown=autoflow:autoflow assets ./assets
+COPY --chown=autoflow:autoflow js ./js
 COPY --chown=autoflow:autoflow run.py celery_worker.py ./
 RUN mkdir -p /app/uploads && chown autoflow:autoflow /app/uploads
 

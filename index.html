@@ -8,8 +8,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
   }
 }
 </script>
@@ -368,14 +368,5 @@
 <script src="script.js"></script>
 <script type="module" src="js/intro-scene.js?v=10"></script>
 <script type="module" src="js/phone-scroll.js"></script>
-<script>
-  window.setTimeout(function () {
-    if (!window.__autoflowIntroDone) {
-      document.body.classList.remove('intro-pending');
-      var introCanvas = document.getElementById('intro-canvas');
-      if (introCanvas) introCanvas.remove();
-    }
-  }, 4500);
-</script>
 </body>
 </html>

@@ -306,7 +306,9 @@ def _register_handlers(app: Flask) -> None:
                 "default-src 'self'; img-src 'self' data: https:; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com; "
-                "script-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; "
+                "script-src 'self' https://cdn.jsdelivr.net "
+                "'sha256-IePZiTK0kENB95t5ur2La3b+Se1vgKv9LsDaAOhnFL0='; "
+                "connect-src 'self'; "
                 "object-src 'none'; base-uri 'self'; form-action 'self'; "
                 "frame-ancestors 'self'",
             )

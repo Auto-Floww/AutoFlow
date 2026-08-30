@@ -40,6 +40,14 @@
   route();
 })();
 
+// CSP-safe fallback: reveal the page if the Three.js intro cannot finish.
+window.setTimeout(() => {
+  if (window.__autoflowIntroDone) return;
+
+  document.body.classList.remove("intro-pending");
+  document.getElementById("intro-canvas")?.remove();
+}, 4500);
+
 // ============================================
 // Contact form (front-end only, no backend)
 // ============================================
