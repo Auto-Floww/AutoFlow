@@ -12,11 +12,18 @@ if [[ ! -s .env ]]; then
   exit 1
 fi
 
+if [[ ! -s .env.evolution ]]; then
+  echo "Erro: $APP_DIR/.env.evolution não existe ou está vazio." >&2
+  echo "A aplicação usa http://evolution-api:8080 e precisa da stack Evolution no mesmo projeto Compose." >&2
+  exit 1
+fi
+
 compose=(
   docker compose
   --project-name "$PROJECT_NAME"
   --env-file "$APP_DIR/.env"
   -f "$APP_DIR/docker-compose.yml"
+  -f "$APP_DIR/docker-compose.evolution.yml"
   -f "$APP_DIR/docker-compose.vm.yml"
 )
 
@@ -54,6 +61,15 @@ docker tag autoflow-web:latest autoflow-beat:latest
 
 if ! "${compose[@]}" up -d --no-build --remove-orphans; then
   echo "A atualização dos serviços falhou. Restaurando a imagem anterior..." >&2
+  restore_previous_release
+  exit 1
+fi
+
+evolution_container="$("${compose[@]}" ps -q evolution-api)"
+if [[ -z "$evolution_container" ]] ||
+  [[ "$(docker inspect --format '{{.State.Running}}' "$evolution_container")" != "true" ]]; then
+  echo "A Evolution API não está em execução após a atualização." >&2
+  "${compose[@]}" logs --tail 100 evolution-api evolution-postgres evolution-redis >&2 || true
   restore_previous_release
   exit 1
 fi
