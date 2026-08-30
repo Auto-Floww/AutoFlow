@@ -23,7 +23,7 @@ compose=(
 "${compose[@]}" config --quiet
 
 echo "Removendo camadas Docker intermediárias..."
-docker image prune -f
+docker image prune -af
 docker builder prune -f >/dev/null 2>&1 || true
 
 rollback_available=false
