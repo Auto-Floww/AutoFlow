@@ -17,5 +17,6 @@ instance/
 .vscode/
 .DS_Store
 Thumbs.db
+.github-autoflow-deploy-key*
 outputs/
 work/

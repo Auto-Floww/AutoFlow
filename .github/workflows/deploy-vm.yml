@@ -1,0 +1,80 @@
+name: Publicar na VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: producao-autoflow
+  cancel-in-progress: false
+
+env:
+  VM_HOST: 164.152.52.7
+  VM_USER: ubuntu
+  VM_PATH: /home/ubuntu/autoflow
+  APP_URL: https://164-152-52-7.sslip.io
+
+jobs:
+  testes:
+    name: Executar testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Validar aplicação
+        run: pytest -q
+
+  publicar:
+    name: Atualizar produção
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar acesso SSH
+        env:
+          VM_SSH_PRIVATE_KEY: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$VM_SSH_PRIVATE_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/autoflow_vm
+          chmod 600 ~/.ssh/autoflow_vm
+          printf '%s\n' \
+            '164.152.52.7 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEjtRsbcKXjP7JzLcO/ROz2ElXVFhhIxNMB0OzhfuDN8' \
+            > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Enviar e publicar a revisão
+        run: |
+          tar --exclude='.git' -czf - . | \
+            ssh -i ~/.ssh/autoflow_vm \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              "$VM_USER@$VM_HOST" \
+              "deploy $GITHUB_SHA"
+
+      - name: Confirmar acesso público
+        run: |
+          curl --fail --silent --show-error \
+            --retry 12 --retry-delay 10 --retry-all-errors \
+            "$APP_URL/health"
+
