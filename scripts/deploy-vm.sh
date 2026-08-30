@@ -22,6 +22,10 @@ compose=(
 
 "${compose[@]}" config --quiet
 
+echo "Removendo camadas Docker intermediárias..."
+docker image prune -f
+docker builder prune -f >/dev/null 2>&1 || true
+
 rollback_available=false
 if docker image inspect autoflow-web:latest >/dev/null 2>&1; then
   docker tag autoflow-web:latest autoflow-web:rollback

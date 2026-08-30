@@ -65,6 +65,7 @@ jobs:
 
       - name: Enviar e publicar a revisão
         run: |
+          set -o pipefail
           tar --exclude='.git' -czf - . | \
             ssh -i ~/.ssh/autoflow_vm \
               -o BatchMode=yes \
@@ -77,4 +78,3 @@ jobs:
           curl --fail --silent --show-error \
             --retry 12 --retry-delay 10 --retry-all-errors \
             "$APP_URL/health"
-
