@@ -51,6 +51,5 @@ rsync -a --delete \
   --exclude 'work/' \
   "$staging_dir/" "$APP_DIR/"
 
-APP_DIR="$APP_DIR" \
 DEPLOY_REVISION="$DEPLOY_REVISION" \
 bash "$APP_DIR/scripts/deploy-vm.sh"
