@@ -12,6 +12,7 @@ if [[ ! "$ORIGINAL_COMMAND" =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
 fi
 
 readonly DEPLOY_REVISION="${BASH_REMATCH[1]}"
+export DEPLOY_REVISION
 
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
@@ -51,5 +52,4 @@ rsync -a --delete \
   --exclude 'work/' \
   "$staging_dir/" "$APP_DIR/"
 
-DEPLOY_REVISION="$DEPLOY_REVISION" \
 bash "$APP_DIR/scripts/deploy-vm.sh"
