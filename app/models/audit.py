@@ -1,4 +1,6 @@
-"""Append-only audit trail model."""
+"""Modelo de histórico de auditoria imutável."""
+
+"""Novos registros podem ser adicionados, mas o historico nao deve ser alterado ou removido"""
 
 from __future__ import annotations
 

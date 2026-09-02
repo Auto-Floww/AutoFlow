@@ -1,4 +1,4 @@
-"""Per-company AI and WhatsApp settings."""
+"""Configurações de IA e WhatsApp por empresa."""
 
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ class AISettings(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
 
 
 class WhatsAppIntegration(db.Model, CrudMixin, TenantMixin, TimestampMixin, ReprMixin):
+    """Armazena a integração do WhatsApp, seu status e informações de erro para cada empresa."""
     __tablename__ = "whatsapp_integrations"
 
     id = db.Column(db.Integer, primary_key=True)

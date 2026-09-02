@@ -1,4 +1,4 @@
-"""Shared model helpers for tenant isolation and consistent timestamps."""
+"""Funções auxiliares compartilhadas dos modelos para isolamento de clientes e padronização de registros de data e hora."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from app.extensions import db
 
 
 def utcnow() -> datetime:
-    """Return a naive UTC timestamp, which is portable across MySQL and SQLite."""
+    """Retorna um registro de data e hora UTC sem informações de fuso horário, compatível com MySQL e SQLite."""
 
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -27,7 +27,7 @@ class TimestampMixin:
 
 
 class TenantMixin:
-    """Adds mandatory company ownership and safe query helpers."""
+    """Adiciona a associação obrigatoria com a empresa e funções auxiliares para consultas seguras."""
 
     @declared_attr
     def company_id(cls):  # noqa: N805 - SQLAlchemy declared attribute
@@ -64,7 +64,7 @@ class ReprMixin:
 
 
 class CrudMixin:
-    """Basic persistence kept on the model, without a redundant repository."""
+    """Mantem a persistencia basica no modelo, evitando um repositorio desnecessario."""
 
     _CRUD_PROTECTED_UPDATE_FIELDS = frozenset(
         {"id", "company_id", "created_at", "updated_at"}
@@ -72,7 +72,7 @@ class CrudMixin:
 
     @classmethod
     def criar(cls, *, commit: bool = True, **dados):
-        """Create and persist an instance of the model."""
+        """Cria e salva uma instancia do modelo"""
 
         return cls(**dados).salvar(commit=commit)
 

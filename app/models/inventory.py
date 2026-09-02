@@ -1,4 +1,4 @@
-"""Inventory balance and immutable movement ledger."""
+"""Saldo do estoque e historico imutavel de movimentacoes."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Transactional outbox for durable Celery dispatch."""
+"""Outbox transacional para envio confiável de tarefas ao Celery."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ OUTBOX_TASK_NAMES = (
 
 
 class TaskOutbox(db.Model, CrudMixin, TimestampMixin, ReprMixin):
-    """A task intent committed atomically with the domain state that created it."""
+    """Garante que a tarefa seja salva junto com a alteração que a criou."""
 
     __tablename__ = "task_outbox"
 

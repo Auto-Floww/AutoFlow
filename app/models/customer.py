@@ -1,4 +1,4 @@
-"""Customer and lightweight CRM model."""
+"""Modelo de cliente e CRM simplificado"""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""In-app notifications."""
+"""notificacoes dentro do app."""
 
 from __future__ import annotations
 

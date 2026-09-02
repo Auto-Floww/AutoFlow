@@ -1,4 +1,4 @@
-"""Company and membership models."""
+"""Modelos de empresas e associacoes."""
 
 from __future__ import annotations
 

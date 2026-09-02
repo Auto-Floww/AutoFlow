@@ -1,4 +1,4 @@
-"""Shared HTTP request, response, serialization, and audit helpers."""
+"""Funções auxiliares compartilhadas para requisições HTTP, respostas, serialização e auditoria."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.models import AuditLog
 
 
 def company_local(value: datetime | None, timezone_name: str) -> datetime | None:
-    """Convert a naive UTC database timestamp to a company's display timezone."""
+    """Converte um registro de data e hora UTC do banco de dados para o fuso horário de exibição da empresa."""
 
     if value is None:
         return None

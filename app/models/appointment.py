@@ -1,4 +1,4 @@
-"""Services, professionals, schedules, and appointments."""
+"""Serviços, profissionais, horários e agendamentos."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tenant delivery and pickup rules."""
+"""Regras de entrega e retirada por empresa."""
 
 from __future__ import annotations
 

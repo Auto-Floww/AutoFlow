@@ -360,7 +360,7 @@ def remove_tag(conversation_id: int, tag_id: int):
 
 
 class ConversationsController:
-    """HTTP controller for conversations and human handoff operations."""
+    """Controlador HTTP para operações de conversas e transferência para atendimento humano."""
 
     index = staticmethod(index)
     detail = staticmethod(detail)

@@ -234,7 +234,7 @@ def change_password():
 
 
 class AuthController:
-    """HTTP controller for account registration and authentication."""
+    """Controlador HTTP responsável pelo registro e autenticação de usuários."""
 
     register = staticmethod(register)
     login = staticmethod(login)

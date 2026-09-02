@@ -1,4 +1,4 @@
-"""Class controller for the WhatsApp QR Code resource."""
+"""Controller para o recurso de código QR do WhatsApp."""
 
 from __future__ import annotations
 

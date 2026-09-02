@@ -1,4 +1,4 @@
-"""Catalog products and variants."""
+"""Catalogo produtos e variantes."""
 
 from __future__ import annotations
 

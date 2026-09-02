@@ -1,4 +1,4 @@
-"""FAQ and knowledge-base content used by the assistant."""
+"""conteudo de perguntas frequentes (FAQ) e base de conhecimento usado pelo assistente."""
 
 from __future__ import annotations
 

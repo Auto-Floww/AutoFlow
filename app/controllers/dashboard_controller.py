@@ -298,7 +298,7 @@ def read_notification(notification_id: int):
 
 
 class DashboardController:
-    """HTTP controller for dashboard views, metrics, and notifications."""
+    """Controlador HTTP para visualizações do dashboard, métricas e notificações."""
 
     index = staticmethod(index)
     metrics = staticmethod(metrics)

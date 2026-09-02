@@ -235,7 +235,7 @@ def disconnect_whatsapp():
 
 
 class SettingsController:
-    """HTTP controller for AI and WhatsApp settings."""
+    """Controlador HTTP para configurações de IA e WhatsApp."""
 
     ai = staticmethod(ai)
     save_ai = staticmethod(save_ai)

@@ -1,4 +1,4 @@
-"""Tenant tags and explicit association models."""
+"""Tags por empresa e models de associacao entre dados"""
 
 from __future__ import annotations
 

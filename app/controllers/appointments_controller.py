@@ -461,7 +461,7 @@ def save_settings():
 
 
 class AppointmentsController:
-    """HTTP controller for appointment and scheduling operations."""
+    """Controlador HTTP para operações de agendamento de consultas."""
 
     index = staticmethod(index)
     availability = staticmethod(availability)

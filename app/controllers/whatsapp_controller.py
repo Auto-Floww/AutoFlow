@@ -1,4 +1,4 @@
-"""Evolution API v2 webhook endpoint."""
+"""Endpoint de webhook da Evolution API v2."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def evolution_webhook():
 
 
 class WhatsAppController:
-    """HTTP controller for Evolution API webhook ingestion."""
+    """Controlador HTTP responsável pelo recebimento de webhooks da Evolution API."""
 
     evolution_webhook = staticmethod(evolution_webhook)
 

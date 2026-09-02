@@ -1,4 +1,4 @@
-"""Conversation message model with webhook idempotency fields."""
+"""models de mensagem da conversa com campos para evitar duplicidade no webhook"""
 
 from __future__ import annotations
 

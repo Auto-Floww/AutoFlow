@@ -1,4 +1,4 @@
-"""Conversation state and memory."""
+"""Informacoes sobre estado da conversa e memoria para lembrar da conversa"""
 
 from __future__ import annotations
 

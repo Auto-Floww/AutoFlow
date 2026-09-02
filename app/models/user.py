@@ -1,4 +1,4 @@
-"""Application user model."""
+"""Model de aplicacao do usuario."""
 
 from __future__ import annotations
 
