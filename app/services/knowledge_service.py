@@ -1,4 +1,4 @@
-"""Bounded tenant-scoped FAQ and knowledge search."""
+"""Pesquisa limitada de perguntas frequentes (FAQ) e da base de conhecimento de um determinado tenant (empresa ou organização)."""
 
 from __future__ import annotations
 

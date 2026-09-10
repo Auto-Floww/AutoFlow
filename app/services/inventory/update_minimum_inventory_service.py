@@ -1,4 +1,4 @@
-"""Use case for changing the low-stock threshold of an inventory row."""
+"""Caso de uso para alterar o limite de estoque baixo de um registro de inventário."""
 
 from app.extensions import db
 from app.models import Inventory

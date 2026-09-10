@@ -1,4 +1,4 @@
-"""Use case for obtaining an active conversation for a customer."""
+"""Caso de uso para obter a conversa ativa de um cliente."""
 
 import app.services.conversation_service as legacy
 

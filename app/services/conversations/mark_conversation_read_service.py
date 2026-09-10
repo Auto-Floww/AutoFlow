@@ -1,4 +1,4 @@
-"""Use case for clearing a conversation's unread counter."""
+"""Caso de uso para zerar o contador de mensagens não lidas de uma conversa."""
 
 import app.services.conversation_service as legacy
 

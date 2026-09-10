@@ -1,4 +1,4 @@
-"""Structural contract for the HTTP Controller layer and thin route wiring."""
+"""Contrato estrutural da camada de controladores HTTP e configuração simplificada das rotas."""
 
 from __future__ import annotations
 

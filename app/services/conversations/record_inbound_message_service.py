@@ -1,4 +1,4 @@
-"""Use case for recording an idempotent inbound message."""
+"""Caso de uso para zerar o contador de mensagens não lidas de uma conversa."""
 
 import app.services.conversation_service as legacy
 

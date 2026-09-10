@@ -1,4 +1,4 @@
-"""Settings Blueprint wiring and compatibility handler exports."""
+"""Configuração do Blueprint de configurações e exportações de handlers para compatibilidade."""
 
 from app.controllers.settings_controller import SettingsController, bp
 

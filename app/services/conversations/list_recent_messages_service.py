@@ -1,4 +1,4 @@
-"""Use case for listing bounded recent conversation messages."""
+"""Caso de uso para listar uma quantidade limitada de mensagens recentes de uma conversa."""
 
 import app.services.conversation_service as legacy
 

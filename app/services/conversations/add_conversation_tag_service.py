@@ -1,4 +1,4 @@
-"""Use case for attaching a tag to a conversation."""
+"""Caso de uso para adicionar uma etiqueta a uma conversa."""
 
 import app.services.conversation_service as legacy
 

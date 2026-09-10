@@ -1,4 +1,4 @@
-"""Transactional inventory operations with an auditable movement ledger."""
+"""Operações transacionais de estoque com um registro auditável de movimentações."""
 
 from __future__ import annotations
 

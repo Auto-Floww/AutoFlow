@@ -1,8 +1,7 @@
-"""Application use cases, grouped by domain.
-
-New code imports a concrete class from ``app.services.<domain>`` and invokes
-its ``execute()`` method. The lazy names below only preserve older integrations
-while they migrate from the former multi-action facades.
+"""Casos de uso da aplicação, agrupados por domínio.
+O código novo importa uma classe concreta de app.services.<domínio> e chama seu método execute().
+ Os nomes carregados sob demanda abaixo servem apenas para manter a compatibilidade com integrações antigas enquanto elas migram 
+ das fachadas anteriores, que reuniam várias ações.
 """
 
 from __future__ import annotations

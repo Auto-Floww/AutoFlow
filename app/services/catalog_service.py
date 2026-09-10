@@ -1,4 +1,4 @@
-"""Read-only product catalog service used by routes and AI tools."""
+"""Serviço de catálogo de produtos somente para leitura, utilizado pelas rotas e ferramentas de IA."""
 
 from __future__ import annotations
 

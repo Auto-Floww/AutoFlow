@@ -1,4 +1,4 @@
-"""Authentication Blueprint wiring and compatibility handler exports."""
+"""Configuração do Blueprint de autenticação e exportações de handlers para compatibilidade."""
 
 from app.controllers.auth_controller import AuthController, bp
 

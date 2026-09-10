@@ -1,4 +1,4 @@
-"""Use case for checking and persisting a WhatsApp connection state."""
+"""Caso de uso para verificar e salvar o estado da conexão com o WhatsApp."""
 
 import app.services.whatsapp_service as legacy
 

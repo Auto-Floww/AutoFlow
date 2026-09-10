@@ -1,4 +1,4 @@
-"""Conversation Blueprint wiring and compatibility handler exports."""
+"""Configuração do Blueprint de conversas e exportações de handlers para compatibilidade."""
 
 from app.controllers.conversations_controller import ConversationsController, bp
 

@@ -1,4 +1,4 @@
-"""Application factory do AutoFlow."""
+"""Fábrica da aplicação AutoFlow."""
 
 import hmac
 import logging

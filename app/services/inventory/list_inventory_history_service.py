@@ -1,4 +1,4 @@
-"""Use case for listing a tenant-scoped inventory movement history."""
+"""Caso de uso para listar o histórico de movimentações de estoque de um determinado tenant (empresa ou organização).."""
 
 from app.models import Inventory, InventoryMovement
 from app.services.tenancy import tenant_get

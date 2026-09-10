@@ -1,4 +1,4 @@
-"""Use case: generate a QR Code for one WhatsApp integration."""
+"""Caso de uso para gerar um QR Code para uma integração do WhatsApp."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from app.services.whatsapp_service import WhatsAppService
 
 
 class GenerateWhatsAppQrCodeService:
-    """Validate and coordinate only the QR Code generation use case."""
+    """Validar e coordenar exclusivamente o caso de uso de geração do QR Code."""
 
     def __init__(self, evolution_service: WhatsAppService | None = None):
         self.evolution_service = evolution_service or WhatsAppService()

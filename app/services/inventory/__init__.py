@@ -1,4 +1,4 @@
-"""Inventory use cases."""
+"""Casos de uso relacionados ao controle de estoque."""
 
 from app.services.inventory.adjust_stock_service import AdjustStockService
 from app.services.inventory.find_inventory_for_catalog_service import (

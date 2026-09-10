@@ -1,4 +1,4 @@
-"""Durable dispatch of allow-listed Celery tasks through a transactional outbox."""
+"""Envio confiável de tarefas Celery previamente autorizadas por meio de uma caixa de saída transacional."""
 
 from __future__ import annotations
 

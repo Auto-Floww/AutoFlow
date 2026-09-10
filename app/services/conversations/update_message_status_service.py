@@ -1,4 +1,4 @@
-"""Use case for applying a provider delivery status to a message."""
+"""Caso de uso para atualizar uma mensagem com o status de entrega informado pelo provedor."""
 
 import app.services.conversation_service as legacy
 

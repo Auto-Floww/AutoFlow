@@ -1,4 +1,4 @@
-"""Focused behavior tests for customer and inventory use cases."""
+"""Testes de comportamento específicos para os casos de uso de clientes e estoque."""
 
 import pytest
 

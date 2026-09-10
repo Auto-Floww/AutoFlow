@@ -1,4 +1,4 @@
-"""Use case for searching the tenant product catalog."""
+"""Caso de uso para pesquisar no catálogo de produtos de um determinado tenant (cliente ou organização)."""
 
 import app.services.catalog_service as legacy
 

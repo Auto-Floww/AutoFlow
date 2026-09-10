@@ -1,4 +1,4 @@
-"""Use case for reserving inbound AI-message quota atomically."""
+"""Caso de uso para reservar, de forma atômica, parte da cota de mensagens recebidas que serão processadas pela IA."""
 
 import app.services.quota_service as legacy
 

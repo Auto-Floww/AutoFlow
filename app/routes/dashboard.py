@@ -1,4 +1,4 @@
-"""Dashboard Blueprint wiring and compatibility handler exports."""
+"""Configuração do Blueprint do painel de controle e exportações de handlers para compatibilidade."""
 
 from app.controllers.dashboard_controller import DashboardController, bp
 

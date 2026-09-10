@@ -1,4 +1,4 @@
-"""Customer and CRM use cases."""
+"""Casos de uso relacionados a clientes e ao CRM (Gestão de Relacionamento com o Cliente)."""
 
 from app.services.customers.add_customer_tag_service import AddCustomerTagService
 from app.services.customers.archive_customer_service import ArchiveCustomerService

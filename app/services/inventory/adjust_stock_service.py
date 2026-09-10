@@ -1,4 +1,4 @@
-"""Use case for applying an auditable stock movement."""
+"""Caso de uso para registrar uma movimentação de estoque que possa ser rastreada e auditada."""
 
 import app.services.inventory_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for adding a variant and its initial inventory."""
+"""Caso de uso para adicionar uma variante de produto e seu estoque inicial."""
 
 from app.extensions import db
 from app.models import Product, ProductVariant

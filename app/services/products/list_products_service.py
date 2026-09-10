@@ -1,4 +1,4 @@
-"""Use case for listing tenant-scoped products."""
+"""Caso de uso para listar os produtos pertencentes a um determinado tenant (empresa ou organização)."""
 
 from sqlalchemy import or_
 

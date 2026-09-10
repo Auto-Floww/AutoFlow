@@ -1,4 +1,4 @@
-"""Use case for cancelling an appointment."""
+"""Caso de uso para cancelar um agendamento."""
 
 import app.services.appointment_service as legacy
 

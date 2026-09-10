@@ -1,4 +1,4 @@
-"""Use case for dispatching a bounded batch of pending outbox entries."""
+"""Caso de uso para enviar um lote limitado de entradas pendentes da caixa de saída."""
 
 import app.services.outbox_service as legacy
 

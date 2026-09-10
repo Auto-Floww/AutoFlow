@@ -1,4 +1,4 @@
-"""WhatsApp webhook Blueprint wiring and compatibility handler export."""
+"""Configuração do Blueprint do webhook do WhatsApp e exportação do handler para compatibilidade.."""
 
 from app.controllers.whatsapp_controller import WhatsAppController, bp
 

@@ -1,7 +1,7 @@
-"""Central tenant authorization helpers.
+"""Recursos auxiliares centralizados para autorização de tenants.
 
-Routes should derive the company from the authenticated user and then pass it to
-services. AI tools and Celery tasks receive it from trusted database context only.
+As rotas devem obter a empresa a partir do usuário autenticado e, em seguida, repassá-la aos serviços. 
+As ferramentas de IA e as tarefas do Celery devem recebê-la somente de um contexto confiável do banco de dados.
 """
 
 from __future__ import annotations

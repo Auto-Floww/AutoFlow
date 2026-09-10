@@ -1,4 +1,4 @@
-"""Use case for creating a customer."""
+"""Caso de uso para criar um cliente."""
 
 import app.services.customer_service as legacy
 

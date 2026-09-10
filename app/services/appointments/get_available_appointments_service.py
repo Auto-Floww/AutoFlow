@@ -1,4 +1,4 @@
-"""Use case for listing bookable appointment slots."""
+"""Caso de uso para listar os horários disponíveis para agendamento."""
 
 from datetime import date
 

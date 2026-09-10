@@ -1,4 +1,4 @@
-"""Integration checks for the public landing page and application entry points."""
+"""Testes de integração para a página inicial pública e os pontos de entrada da aplicação."""
 
 import base64
 import hashlib

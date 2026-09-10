@@ -1,4 +1,4 @@
-"""Use case for returning a conversation to AI control."""
+"""Caso de uso para devolver o controle de uma conversa à IA."""
 
 import app.services.conversation_service as legacy
 

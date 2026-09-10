@@ -1,4 +1,4 @@
-"""Use case for pausing AI and requesting a human handoff."""
+"""Caso de uso para pausar a IA e solicitar a transferência da conversa para um atendente humano."""
 
 import app.services.conversation_service as legacy
 

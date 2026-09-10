@@ -1,4 +1,4 @@
-"""Use case for setting an absolute inventory quantity."""
+"""Caso de uso para definir a quantidade exata de um item no estoque."""
 
 import app.services.inventory_service as legacy
 

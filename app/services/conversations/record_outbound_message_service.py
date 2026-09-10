@@ -1,4 +1,4 @@
-"""Use case for recording an outbound message."""
+"""Caso de uso para registrar uma mensagem enviada."""
 
 import app.services.conversation_service as legacy
 

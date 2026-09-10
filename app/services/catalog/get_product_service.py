@@ -1,4 +1,4 @@
-"""Use case for retrieving one catalog product."""
+"""Caso de uso para buscar um produto específico no catálogo."""
 
 import app.services.catalog_service as legacy
 

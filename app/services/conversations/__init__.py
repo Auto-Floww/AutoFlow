@@ -1,4 +1,4 @@
-"""Conversation and message lifecycle use cases."""
+"""Casos de uso relacionados ao ciclo de vida de conversas e mensagens."""
 
 from app.services.conversations.add_conversation_tag_service import AddConversationTagService
 from app.services.conversations.build_groq_conversation_history_range_service import (

@@ -1,4 +1,4 @@
-"""Use case for listing and filtering tenant customers."""
+"""Caso de uso para listar e filtrar os clientes de um determinado tenant (empresa ou organização)."""
 
 import app.services.customer_service as legacy
 

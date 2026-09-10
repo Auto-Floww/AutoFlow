@@ -1,4 +1,4 @@
-"""Use case for generating a bounded conversation summary."""
+"""Caso de uso para gerar um resumo de conversa com tamanho limitado."""
 
 import app.services.groq_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for obtaining the inventory row for a product or variant."""
+"""Caso de uso para obter o registro de estoque de um produto ou de uma variante."""
 
 import app.services.inventory_service as legacy
 

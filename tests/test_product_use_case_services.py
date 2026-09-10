@@ -1,4 +1,4 @@
-"""Behavioral coverage for the product use-case Services."""
+"""Cobertura de testes comportamentais para os serviços de casos de uso de produtos."""
 
 from app.extensions import db
 from app.models import Inventory, Product

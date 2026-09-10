@@ -1,4 +1,4 @@
-"""Use case for creating a product, its variants, and initial inventory."""
+"""Caso de uso para criar um produto, suas variantes e o estoque inicial."""
 
 from __future__ import annotations
 

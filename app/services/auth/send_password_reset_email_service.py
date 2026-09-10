@@ -1,4 +1,4 @@
-"""Use case for delivering a password-reset email."""
+"""Caso de uso para enviar um e-mail de redefinição de senha."""
 
 import app.services.email_service as legacy
 

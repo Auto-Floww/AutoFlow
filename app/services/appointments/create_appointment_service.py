@@ -1,4 +1,5 @@
-"""Use case for creating an appointment transactionally."""
+"""Caso de uso para criar um agendamento de forma transacional 
+(responsável por criar um agendamento com segurança, garantindo que todas as etapas sejam concluídas corretamente.)."""
 
 from datetime import datetime
 

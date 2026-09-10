@@ -1,4 +1,4 @@
-"""Appointment Blueprint wiring and backwards-compatible handler exports."""
+"""Configuração do Blueprint de agendamentos e exportações de handlers compatíveis com versões anteriores."""
 
 from app.controllers.appointments_controller import AppointmentsController, bp
 

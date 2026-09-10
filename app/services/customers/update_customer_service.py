@@ -1,4 +1,4 @@
-"""Use case for updating a customer profile or CRM state."""
+"""Caso de uso para atualizar o perfil de um cliente ou seu estado no CRM."""
 
 from typing import Any
 

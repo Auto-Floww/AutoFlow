@@ -1,4 +1,4 @@
-"""Use case for persisting a conversation summary and cursor."""
+"""Caso de uso para salvar o resumo de uma conversa e o cursor que indica até onde ela foi processada."""
 
 import app.services.conversation_service as legacy
 

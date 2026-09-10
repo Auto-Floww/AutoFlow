@@ -1,4 +1,4 @@
-"""Use case for reserving available inventory."""
+"""Caso de uso para reservar itens disponíveis no estoque."""
 
 import app.services.inventory_service as legacy
 

@@ -1,4 +1,4 @@
-"""Transactional-outbox use cases."""
+"""Casos de uso relacionados à caixa de saída transacional."""
 
 from app.services.outbox.dispatch_outbox_best_effort_service import (
     DispatchOutboxBestEffortService,

@@ -1,4 +1,4 @@
-"""Use case for building a bounded range of Groq message history."""
+"""Caso de uso para montar um intervalo limitado do histórico de mensagens da Groq."""
 
 import app.services.conversation_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for retrieving one tenant-scoped conversation."""
+"""Caso de uso para buscar uma conversa específica pertencente a um determinado tenant (cliente ou organização)."""
 
 import app.services.conversation_service as legacy
 

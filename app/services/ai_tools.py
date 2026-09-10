@@ -1,4 +1,4 @@
-"""The only database capabilities exposed to the AI model."""
+"""As únicas operações de banco de dados disponibilizadas ao modelo de IA."""
 
 from __future__ import annotations
 

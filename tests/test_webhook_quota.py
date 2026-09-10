@@ -1,4 +1,4 @@
-"""Cost/backpressure regression tests for inbound WhatsApp messages."""
+"""Testes de regressão de custos e controle de sobrecarga para mensagens recebidas pelo WhatsApp."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Use case for assigning a conversation to a human agent."""
+"""Caso de uso para atribuir uma conversa a um atendente humano."""
 
 import app.services.conversation_service as legacy
 

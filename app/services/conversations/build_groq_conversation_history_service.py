@@ -1,4 +1,4 @@
-"""Use case for building Groq-compatible recent message history."""
+"""Caso de uso para montar o histórico recente de mensagens em um formato compatível com a Groq."""
 
 import app.services.conversation_service as legacy
 

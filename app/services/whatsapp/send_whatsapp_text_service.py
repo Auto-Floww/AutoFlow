@@ -1,4 +1,4 @@
-"""Use case for sending a text through the configured WhatsApp integration."""
+"""Caso de uso para enviar uma mensagem de texto pela integração configurada do WhatsApp."""
 
 from typing import Any
 

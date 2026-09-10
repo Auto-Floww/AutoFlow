@@ -1,4 +1,4 @@
-"""Use case for attempting immediate outbox dispatch safely."""
+"""Caso de uso para tentar enviar imediatamente um item da caixa de saída, de forma segura."""
 
 import app.services.outbox_service as legacy
 

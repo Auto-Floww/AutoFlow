@@ -1,7 +1,6 @@
-"""Groq Chat Completions client and bounded tool-calling loop.
+"""Cliente do Groq Chat Completions e ciclo limitado de chamadas de ferramentas.
 
-This module intentionally uses the HTTP API directly so no provider SDK is
-required and the API key never leaves the backend.
+Este módulo utiliza intencionalmente a API HTTP de forma direta, dispensando o SDK do provedor e garantindo que a chave da API nunca saia do backend.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Evolution API v2 client and inbound webhook translator."""
+"""Cliente da API Evolution v2 e tradutor de webhooks recebidos."""
 
 from __future__ import annotations
 

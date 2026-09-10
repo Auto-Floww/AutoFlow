@@ -1,4 +1,4 @@
-"""Transactional inbound quotas that protect downstream AI capacity and cost."""
+"""Cotas transacionais de mensagens recebidas que protegem a capacidade da IA e ajudam a controlar os custos."""
 
 from __future__ import annotations
 

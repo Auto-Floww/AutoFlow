@@ -1,4 +1,4 @@
-"""Use case for generating an AI answer for one conversation."""
+"""Caso de uso para gerar uma resposta de IA para uma conversa."""
 
 import app.services.groq_service as legacy
 

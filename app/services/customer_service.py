@@ -1,4 +1,4 @@
-"""Customer, CRM stage, and customer-tag operations."""
+"""Operações relacionadas a clientes, etapas do CRM e etiquetas de clientes."""
 
 from __future__ import annotations
 

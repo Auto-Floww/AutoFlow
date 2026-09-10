@@ -1,4 +1,4 @@
-"""Use case for appending an audit-log record."""
+"""Caso de uso para adicionar um registro ao histórico de auditoria."""
 
 import app.services.notification_service as legacy
 

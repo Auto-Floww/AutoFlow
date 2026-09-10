@@ -1,4 +1,4 @@
-"""Use case for validating scope and persisting WhatsApp webhook events."""
+"""Caso de uso para validar o escopo e salvar os eventos de webhook do WhatsApp."""
 
 from typing import Any
 

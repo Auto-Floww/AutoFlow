@@ -1,4 +1,4 @@
-"""Notification persistence and audit helpers."""
+"""Recursos auxiliares para salvar notificações e registrar auditorias."""
 
 from __future__ import annotations
 

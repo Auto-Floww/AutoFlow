@@ -1,4 +1,4 @@
-"""Use case for searching approved knowledge documents."""
+"""Caso de uso para pesquisar documentos aprovados na base de conhecimento."""
 
 import app.services.knowledge_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for retrieving one tenant-scoped inventory row."""
+"""Caso de uso para buscar um registro específico do estoque pertencente a um determinado tenant (empresa ou organização)."""
 
 import app.services.inventory_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for creating tenant notifications."""
+"""Caso de uso para criar notificações para um determinado tenant (empresa ou organização)."""
 
 import app.services.notification_service as legacy
 

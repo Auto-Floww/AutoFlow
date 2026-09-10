@@ -1,4 +1,4 @@
-"""Structural contract for use-case services grouped by domain."""
+"""Contrato estrutural para os serviços de casos de uso agrupados por domínio."""
 
 from __future__ import annotations
 

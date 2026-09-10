@@ -1,4 +1,4 @@
-"""Use case for archiving a product variant."""
+"""Caso de uso para arquivar uma variante de produto."""
 
 from app.extensions import db
 from app.models import ProductVariant

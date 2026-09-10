@@ -1,4 +1,4 @@
-"""Use case for archiving a product without deleting its history."""
+"""Caso de uso para arquivar um produto sem excluir seu histórico."""
 
 from app.extensions import db
 from app.models import Product

@@ -1,4 +1,4 @@
-"""Use case for upserting a customer received from WhatsApp."""
+"""Caso de uso para criar ou atualizar um cliente recebido pelo WhatsApp."""
 
 import app.services.customer_service as legacy
 

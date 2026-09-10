@@ -1,4 +1,4 @@
-"""Conversation lifecycle, message idempotency, handoff, and memory."""
+"""Ciclo de vida das conversas, idempotência das mensagens, transferência para atendimento humano e memória."""
 
 from __future__ import annotations
 

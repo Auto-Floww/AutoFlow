@@ -1,4 +1,4 @@
-"""Use case for listing low-stock inventory rows."""
+"""Caso de uso para listar os registros de produtos com estoque baixo."""
 
 import app.services.inventory_service as legacy
 

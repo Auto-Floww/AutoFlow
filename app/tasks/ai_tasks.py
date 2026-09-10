@@ -1,4 +1,4 @@
-"""Celery tasks for the WhatsApp -> Groq -> WhatsApp pipeline."""
+"""Tarefas do Celery para o fluxo WhatsApp → Groq → WhatsApp."""
 
 from __future__ import annotations
 

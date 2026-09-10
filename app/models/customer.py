@@ -1,4 +1,4 @@
-"""Modelo de cliente e CRM simplificado"""
+"""Modelo de cliente e CRM(Gestão de Relacionamento com o Cliente.) simplificado"""
 
 from __future__ import annotations
 

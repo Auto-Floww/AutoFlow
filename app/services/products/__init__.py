@@ -1,4 +1,4 @@
-"""Product use cases exposed by the application layer."""
+"""Casos de uso de produtos disponibilizados pela camada de aplicação."""
 
 from app.services.products.archive_product_service import ArchiveProductService
 from app.services.products.archive_product_variant_service import (

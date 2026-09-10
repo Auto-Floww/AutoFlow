@@ -1,4 +1,4 @@
-"""Use case for searching approved FAQ entries."""
+"""Caso de uso para pesquisar perguntas frequentes (FAQ) aprovadas.."""
 
 import app.services.knowledge_service as legacy
 

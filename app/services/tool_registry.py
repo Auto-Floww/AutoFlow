@@ -1,4 +1,4 @@
-"""Allow-listed, Pydantic-validated tool execution for Groq function calling."""
+"""Execução de ferramentas previamente autorizadas e validadas pelo Pydantic para chamadas de função da Groq."""
 
 from __future__ import annotations
 

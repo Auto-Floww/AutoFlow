@@ -1,4 +1,4 @@
-"""Typed service-layer errors safe for routes and background jobs."""
+"""Erros tipados da camada de serviços, seguros para uso em rotas e tarefas executadas em segundo plano."""
 
 from __future__ import annotations
 

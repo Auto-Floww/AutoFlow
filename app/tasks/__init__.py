@@ -1,4 +1,4 @@
-"""Public Celery task exports."""
+"""Exportações públicas de tarefas do Celery."""
 
 from app.tasks.ai_tasks import (
     dispatch_task_outbox,

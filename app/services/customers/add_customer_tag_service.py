@@ -1,4 +1,4 @@
-"""Use case for attaching a tenant-scoped tag to a customer."""
+"""Caso de uso para adicionar a um cliente uma etiqueta pertencente ao mesmo tenant (cliente ou organização)."""
 
 import app.services.customer_service as legacy
 

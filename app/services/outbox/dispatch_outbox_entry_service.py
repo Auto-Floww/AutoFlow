@@ -1,4 +1,4 @@
-"""Use case for dispatching one transactional-outbox entry."""
+"""Caso de uso para enviar uma entrada da caixa de saída transacional."""
 
 import app.services.outbox_service as legacy
 

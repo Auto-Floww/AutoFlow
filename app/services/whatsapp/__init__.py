@@ -1,4 +1,4 @@
-"""WhatsApp application use cases over the legacy Evolution gateway."""
+"""Casos de uso da aplicação do WhatsApp utilizando o gateway legado da Evolution."""
 
 from app.services.whatsapp.check_whatsapp_connection_service import (
     CheckWhatsAppConnectionService,

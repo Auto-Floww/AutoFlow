@@ -1,4 +1,4 @@
-"""Use case for disconnecting the tenant WhatsApp integration."""
+"""Caso de uso para desconectar a integração do WhatsApp de um determinado tenant (empresa ou organização)."""
 
 import app.services.whatsapp_service as legacy
 

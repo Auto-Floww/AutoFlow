@@ -1,4 +1,4 @@
-"""Use case for retrieving one tenant-scoped customer."""
+"""Caso de uso para buscar um cliente específico pertencente a um determinado tenant (empresa ou organização)."""
 
 import app.services.customer_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for persisting an allow-listed task intent."""
+"""Caso de uso para salvar uma intenção de tarefa previamente autorizada."""
 
 from typing import Any
 

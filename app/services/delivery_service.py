@@ -1,4 +1,4 @@
-"""Deterministic delivery rule matching."""
+"""Correspondência determinística de regras de entrega."""
 
 from __future__ import annotations
 

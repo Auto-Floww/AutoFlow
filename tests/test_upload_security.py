@@ -1,4 +1,4 @@
-"""Security regression tests for knowledge and product uploads."""
+"""Testes de regressão de segurança para o envio de arquivos de conhecimento e de produtos."""
 
 from __future__ import annotations
 

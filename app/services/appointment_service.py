@@ -1,4 +1,4 @@
-"""Availability and booking operations with per-professional locking."""
+"""Operações de disponibilidade e agendamento com bloqueio individual por profissional."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Compatibility exports for the shared HTTP controller helpers."""
+"""Exportações de compatibilidade para os auxiliares compartilhados dos controladores HTTP."""
 
 from app.controllers.http import (
     coerce_bool,

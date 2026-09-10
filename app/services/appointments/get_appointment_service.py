@@ -1,4 +1,4 @@
-"""Use case for retrieving one tenant-scoped appointment."""
+"""Caso de uso para buscar um agendamento específico pertencente a um determinado tenant (cliente ou organização)."""
 
 import app.services.appointment_service as legacy
 

@@ -1,4 +1,4 @@
-"""Use case for resolving eligible delivery options."""
+"""Caso de uso para identificar as opções de entrega disponíveis que atendem aos requisitos."""
 
 from decimal import Decimal
 

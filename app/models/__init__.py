@@ -1,6 +1,5 @@
-"""AutoFlow persistence models.
-
-Importing this package registers every mapper with Flask-SQLAlchemy.
+"""Modelos de persistência do AutoFlow.
+A importação deste pacote registra todos os mapeadores no Flask-SQLAlchemy.
 """
 
 from app.models.appointment import (

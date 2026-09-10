@@ -1,4 +1,4 @@
-"""Use case for updating a tenant-scoped product."""
+"""Caso de uso para atualizar um produto pertencente a um determinado tenant (empresa ou organização)."""
 
 from app.extensions import db
 from app.models import Product

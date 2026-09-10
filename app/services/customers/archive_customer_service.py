@@ -1,4 +1,4 @@
-"""Use case for archiving a tenant-scoped customer."""
+"""Caso de uso para arquivar um cliente pertencente a um determinado tenant (empresa ou organização)."""
 
 from app.extensions import db
 from app.models import Customer

@@ -1,4 +1,4 @@
-"""Use case for resolving catalog inventory filters."""
+"""Caso de uso para definir os filtros de estoque aplicados ao catálogo."""
 
 import app.services.inventory_service as legacy
 
