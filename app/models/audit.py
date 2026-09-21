@@ -1,11 +1,11 @@
-"""Modelo de histórico de auditoria imutável."""
+#Modelo de histórico de auditoria imutável.
 
-"""Novos registros podem ser adicionados, mas o historico nao deve ser alterado ou removido"""
-
+#Novos registros podem ser adicionados, mas o historico nao deve ser alterado ou removido
 from __future__ import annotations
 
 from app.extensions import db
 from app.models.base import CrudMixin, ReprMixin, TenantMixin, utcnow
+
 
 
 class AuditLog(db.Model, CrudMixin, TenantMixin, ReprMixin):
