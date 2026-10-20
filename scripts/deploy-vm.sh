@@ -60,6 +60,12 @@ docker tag autoflow-web:latest autoflow-worker:latest
 docker tag autoflow-web:latest autoflow-beat:latest
 
 if ! "${compose[@]}" up -d --no-build --remove-orphans; then
+  echo "Diagnóstico da versão que falhou antes da restauração:" >&2
+  "${compose[@]}" logs --no-color --tail 100 web >&2 || true
+  failed_web_container="$("${compose[@]}" ps -a -q web 2>/dev/null || true)"
+  if [[ -n "$failed_web_container" ]]; then
+    docker inspect --format '{{json .State.Health}}' "$failed_web_container" >&2 || true
+  fi
   echo "A atualização dos serviços falhou. Restaurando a imagem anterior..." >&2
   restore_previous_release
   exit 1
