@@ -1,0 +1,38 @@
+Correção do deploy AutoFlow
+
+Repositório: https://github.com/Auto-Floww/AutoFlow
+Base: 6c38015c2e2ed6ca89da5d2c756058fafb2ec1bd
+Execução investigada: https://github.com/Auto-Floww/AutoFlow/actions/runs/35603470108
+
+O build concluiu, mas o container web ficou unhealthy e houve rollback.
+O probe antigo usa Host 127.0.0.1, rejeitado pelo TRUSTED_HOSTS de produção
+quando APP_URL contém o domínio público. A incompatibilidade foi reproduzida
+localmente. O log antigo não preservou o erro HTTP interno do container,
+portanto ainda é necessário confirmar o resultado numa nova execução na VM.
+
+Alterações:
+- healthcheck.py: conecta em loopback e envia Host derivado de APP_URL.
+- Dockerfile: inclui e executa o novo probe.
+- scripts/deploy-vm.sh: registra logs e estado do health check antes do rollback.
+- tests/test_healthcheck.py: cobre host configurado, fallback, falha HTTP
+  e aceitação/rejeição de hosts pelo endpoint real.
+
+Validação: 266 testes passaram em Python 3.12; bash -n e git diff --check
+passaram. O checkout Windows precisou preservar LF em index.html, como no
+repositório, para o teste de hash CSP. Não há alteração nesse arquivo no patch.
+Docker/VM não foram executados neste ambiente.
+
+Aplicação a partir da raiz de um checkout do repositório na revisão-base:
+  git switch -c fix/vm-healthcheck-host
+  git apply --check /caminho/AutoFlow-correcao-deploy.patch
+  git apply /caminho/AutoFlow-correcao-deploy.patch
+  pytest -q
+
+Alternativamente, copie os quatro arquivos deste ZIP para os mesmos caminhos
+no repositório. Revise, faça commit e abra um pull request para main.
+O workflow de deploy é acionado ao atualizar main; confirme o job e /health.
+
+Publicação pendente: a integração GitHub recusou criar a branch com HTTP 403
+(Resource not accessible by integration). Autorize acesso ao repositório
+Auto-Floww/AutoFlow na conexão GitHub para permitir publicar a correção.
+Nenhuma alteração foi publicada no repositório ou na VM nesta tarefa.

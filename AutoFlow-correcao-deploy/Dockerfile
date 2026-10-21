@@ -1,0 +1,29 @@
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN addgroup --system autoflow && adduser --system --ingroup autoflow autoflow
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=autoflow:autoflow app ./app
+COPY --chown=autoflow:autoflow migrations ./migrations
+COPY --chown=autoflow:autoflow index.html style.css script.js ./
+COPY --chown=autoflow:autoflow assets ./assets
+COPY --chown=autoflow:autoflow js ./js
+COPY --chown=autoflow:autoflow run.py celery_worker.py ./
+COPY --chown=autoflow:autoflow healthcheck.py ./healthcheck.py
+RUN mkdir -p /app/uploads && chown autoflow:autoflow /app/uploads
+
+USER autoflow
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python /app/healthcheck.py
+
+CMD ["gunicorn", "--workers", "3", "--threads", "2", "--timeout", "90", "--bind", "0.0.0.0:5000", "run:app"]

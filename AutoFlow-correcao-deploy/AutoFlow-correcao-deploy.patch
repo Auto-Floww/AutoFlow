@@ -1,0 +1,157 @@
+diff --git a/Dockerfile b/Dockerfile
+index 9314cec..3d727b6 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -17,12 +17,13 @@ COPY --chown=autoflow:autoflow index.html style.css script.js ./
+ COPY --chown=autoflow:autoflow assets ./assets
+ COPY --chown=autoflow:autoflow js ./js
+ COPY --chown=autoflow:autoflow run.py celery_worker.py ./
++COPY --chown=autoflow:autoflow healthcheck.py ./healthcheck.py
+ RUN mkdir -p /app/uploads && chown autoflow:autoflow /app/uploads
+ 
+ USER autoflow
+ EXPOSE 5000
+ 
+ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
++  CMD python /app/healthcheck.py
+ 
+ CMD ["gunicorn", "--workers", "3", "--threads", "2", "--timeout", "90", "--bind", "0.0.0.0:5000", "run:app"]
+diff --git a/healthcheck.py b/healthcheck.py
+new file mode 100644
+index 0000000..9edbff2
+--- /dev/null
++++ b/healthcheck.py
+@@ -0,0 +1,35 @@
++"""Probe the local web server with the host configured for the public app."""
++
++from __future__ import annotations
++
++import os
++from urllib.parse import urlsplit
++from urllib.request import Request, urlopen
++
++
++HEALTH_URL = "http://127.0.0.1:5000/health"
++
++
++def build_health_request(app_url: str | None = None) -> Request:
++    """Connect over loopback while presenting the app's trusted Host header."""
++
++    configured_url = os.getenv("APP_URL", "") if app_url is None else app_url
++    if configured_url:
++        host = urlsplit(configured_url).hostname
++        if not host:
++            raise ValueError("APP_URL precisa conter um hostname para o health check.")
++    else:
++        host = "localhost"
++
++    return Request(HEALTH_URL, headers={"Host": host})
++
++
++def check_health(app_url: str | None = None) -> None:
++    """Raise on connection or HTTP errors so Docker marks the probe unhealthy."""
++
++    with urlopen(build_health_request(app_url), timeout=3) as response:
++        response.read(1)
++
++
++if __name__ == "__main__":
++    check_health()
+diff --git a/scripts/deploy-vm.sh b/scripts/deploy-vm.sh
+index a692931..93fa756 100644
+--- a/scripts/deploy-vm.sh
++++ b/scripts/deploy-vm.sh
+@@ -60,6 +60,12 @@ docker tag autoflow-web:latest autoflow-worker:latest
+ docker tag autoflow-web:latest autoflow-beat:latest
+ 
+ if ! "${compose[@]}" up -d --no-build --remove-orphans; then
++  echo "Diagnóstico da versão que falhou antes da restauração:" >&2
++  "${compose[@]}" logs --no-color --tail 100 web >&2 || true
++  failed_web_container="$("${compose[@]}" ps -a -q web 2>/dev/null || true)"
++  if [[ -n "$failed_web_container" ]]; then
++    docker inspect --format '{{json .State.Health}}' "$failed_web_container" >&2 || true
++  fi
+   echo "A atualização dos serviços falhou. Restaurando a imagem anterior..." >&2
+   restore_previous_release
+   exit 1
+diff --git a/tests/test_healthcheck.py b/tests/test_healthcheck.py
+new file mode 100644
+index 0000000..3bb5729
+--- /dev/null
++++ b/tests/test_healthcheck.py
+@@ -0,0 +1,74 @@
++"""Regression coverage for the Docker health probe's Host header."""
++
++from __future__ import annotations
++
++from urllib.error import HTTPError
++
++import pytest
++
++import healthcheck
++
++
++def test_health_request_connects_to_loopback_with_app_host(monkeypatch):
++    monkeypatch.setenv("APP_URL", "https://autoflow.example/admin")
++
++    request = healthcheck.build_health_request()
++
++    assert request.full_url == "http://127.0.0.1:5000/health"
++    assert request.get_header("Host") == "autoflow.example"
++
++
++def test_health_request_defaults_to_localhost_without_app_url(monkeypatch):
++    monkeypatch.delenv("APP_URL", raising=False)
++
++    request = healthcheck.build_health_request()
++
++    assert request.full_url == "http://127.0.0.1:5000/health"
++    assert request.get_header("Host") == "localhost"
++
++
++def test_healthcheck_propagates_http_failure(monkeypatch):
++    error = HTTPError(
++        healthcheck.HEALTH_URL,
++        503,
++        "service unavailable",
++        hdrs=None,
++        fp=None,
++    )
++
++    def fail_request(request, timeout):
++        assert request.full_url == healthcheck.HEALTH_URL
++        assert request.get_header("Host") == "autoflow.example"
++        assert timeout == 3
++        raise error
++
++    monkeypatch.setattr(healthcheck, "urlopen", fail_request)
++
++    with pytest.raises(HTTPError) as raised:
++        healthcheck.check_health("https://autoflow.example")
++
++    assert raised.value is error
++
++
++def test_trusted_host_health_endpoint_accepts_probe_host_and_rejects_others(
++    app, client
++):
++    app.config["TRUSTED_HOSTS"] = ["autoflow.example"]
++    # Keep this focused on host validation instead of the production error
++    # template, which builds links from the rejected request host.
++    app.register_error_handler(400, lambda error: ("bad request", 400))
++    request = healthcheck.build_health_request("https://autoflow.example")
++
++    # The old Docker probe sent 127.0.0.1 as Host and failed under production
++    # trusted-host validation, even though the TCP connection was healthy.
++    old_probe = client.get("/health", headers={"Host": "127.0.0.1"})
++    assert old_probe.status_code == 400
++
++    accepted = client.get(
++        "/health", headers={"Host": request.get_header("Host")}
++    )
++    assert accepted.status_code == 200
++    assert accepted.json == {"service": "autoflow", "status": "ok"}
++
++    rejected = client.get("/health", headers={"Host": "untrusted.example"})
++    assert rejected.status_code == 400
