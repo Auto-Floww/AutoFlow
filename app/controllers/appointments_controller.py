@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
+import re
 from types import SimpleNamespace
 
 from flask import Blueprint, jsonify, render_template, request
@@ -288,34 +289,97 @@ def create_service():
     return success("Servico criado.", data=model_dict(service, "id", "name", "duration_minutes", "buffer_minutes", "price"), status=201)
 
 
+def _professional_data(item):
+    return {**model_dict(item, "id", "name", "email", "phone", "color", "is_active"),
+            "service_ids": [service.id for service in item.services]}
+
+
+@bp.get("/professionals")
+@login_required
+def professionals():
+    query = Professional.for_company(current_company_id())
+    search = request.args.get("q", "").strip()[:100]
+    if search:
+        term = f"%{search}%"
+        query = query.filter(db.or_(Professional.name.ilike(term), Professional.email.ilike(term), Professional.phone.ilike(term)))
+    items = query.order_by(Professional.name).all()
+    return render_template("appointments/professionals.html", professionals=items,
+                           professional_data={item.id: _professional_data(item) for item in items},
+                           services=Service.for_company(current_company_id()).order_by(Service.name).all(), search=search)
+
+
+def _save_professional(item, data, *, creating=False):
+    try:
+        name = str(data.get("name", item.name or "") or "").strip()
+        email = str(data.get("email", item.email or "") or "").strip().lower()
+        phone = str(data.get("phone", item.phone or "") or "").strip()
+        color = str(data.get("color", item.color or "#14b8a6"))
+        if not name or len(name) > 160 or len(email) > 255 or len(phone) > 32:
+            raise ValueError("Revise o nome e os dados de contato.")
+        if email and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+            raise ValueError("Informe um e-mail válido.")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+            raise ValueError("Informe uma cor válida.")
+        services = item.services
+        if "service_ids" in data or "services_present" in data or creating:
+            raw = data.get("service_ids", [])
+            if not request.is_json:
+                raw = request.form.getlist("service_ids")
+                raw = [value for entry in raw for value in entry.split(",") if value.strip()]
+            if isinstance(raw, str):
+                raw = [value for value in raw.split(",") if value.strip()]
+            if not isinstance(raw, list):
+                raise ValueError("Selecione serviços válidos.")
+            ids = {int(value) for value in raw}
+            services = Service.for_company(current_company_id()).filter(Service.id.in_(ids)).all() if ids else []
+            if len(services) != len(ids):
+                raise ValueError("Selecione serviços da sua empresa.")
+        item.name, item.email, item.phone, item.color = name, email or None, phone or None, color
+        item.is_active = coerce_bool(data.get("is_active"), True if creating else item.is_active)
+        item.services = services
+        db.session.add(item)
+        db.session.flush()
+        record_audit("professional.create" if creating else "professional.update", item)
+        db.session.commit()
+    except (ValueError, TypeError) as exc:
+        db.session.rollback()
+        return failure(str(exc) if isinstance(exc, ValueError) else "Revise os dados do profissional.", status=422)
+    except IntegrityError:
+        db.session.rollback()
+        return failure("Já existe um profissional com este e-mail.", status=409)
+    return success("Profissional salvo.", data=_professional_data(item), endpoint="appointments.professionals", status=201 if creating else 200)
+
+
 @bp.post("/professionals")
 @login_required
 @roles_required("ADMIN", "OWNER")
 def create_professional():
-    data = payload()
-    professional = Professional(
-        company_id=current_company_id(),
-        name=str(data.get("name", "")).strip()[:160],
-        email=str(data.get("email", "")).strip().lower()[:255] or None,
-        phone=str(data.get("phone", "")).strip()[:32] or None,
-        color=str(data.get("color", "#14b8a6"))[:16],
-        is_active=True,
-    )
-    if not professional.name:
-        return failure("Informe o nome do profissional.", status=422)
-    service_ids = data.get("service_ids", [])
-    if isinstance(service_ids, str):
-        service_ids = [int(value) for value in service_ids.split(",") if value.strip().isdigit()]
-    professional.services = Service.for_company(current_company_id()).filter(Service.id.in_(service_ids)).all() if service_ids else []
-    try:
-        db.session.add(professional)
-        db.session.flush()
-        record_audit("professional.create", professional)
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return failure("Ja existe um profissional com este e-mail.", status=409)
-    return success("Profissional criado.", data=model_dict(professional, "id", "name", "email", "color"), status=201)
+    return _save_professional(Professional(company_id=current_company_id()), payload(), creating=True)
+
+
+@bp.post("/professionals/<int:professional_id>")
+@login_required
+@roles_required("ADMIN", "OWNER")
+def update_professional(professional_id):
+    return _save_professional(tenant_get_or_404(Professional, professional_id), payload())
+
+
+@bp.post("/professionals/<int:professional_id>/delete")
+@login_required
+@roles_required("ADMIN", "OWNER")
+def delete_professional(professional_id):
+    item = tenant_get_or_404(Professional, professional_id)
+    if item.appointments.count():
+        item.is_active = False
+        record_audit("professional.archive", item)
+        message = "Profissional desativado. O histórico de agendamentos foi preservado."
+    else:
+        record_audit("professional.delete", item)
+        ScheduleBlock.for_company(current_company_id()).filter_by(professional_id=item.id).delete()
+        db.session.delete(item)
+        message = "Profissional excluído."
+    db.session.commit()
+    return success(message, endpoint="appointments.professionals")
 
 
 @bp.post("/business-hours")
@@ -468,6 +532,9 @@ class AppointmentsController:
     create = staticmethod(create)
     cancel = staticmethod(cancel)
     create_service = staticmethod(create_service)
+    professionals = staticmethod(professionals)
+    update_professional = staticmethod(update_professional)
+    delete_professional = staticmethod(delete_professional)
     create_professional = staticmethod(create_professional)
     save_business_hour = staticmethod(save_business_hour)
     create_block = staticmethod(create_block)
@@ -484,6 +551,9 @@ bp.view_functions.update(
         "create": AppointmentsController.create,
         "cancel": AppointmentsController.cancel,
         "create_service": AppointmentsController.create_service,
+        "professionals": AppointmentsController.professionals,
+        "update_professional": AppointmentsController.update_professional,
+        "delete_professional": AppointmentsController.delete_professional,
         "create_professional": AppointmentsController.create_professional,
         "save_business_hour": AppointmentsController.save_business_hour,
         "create_block": AppointmentsController.create_block,

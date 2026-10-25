@@ -134,8 +134,10 @@
     Object.entries(data || {}).forEach(([key, value]) => {
       const field = form.elements.namedItem(key) || (key === "company" ? form.elements.namedItem("organization") : null);
       if (!field) return;
-      if (field.type === "checkbox") field.checked = Boolean(value);
-      else field.value = value ?? "";
+      if (field.multiple && Array.isArray(value)) {
+        Array.from(field.options).forEach((option) => { option.selected = value.map(String).includes(option.value); });
+      } else if (field.type === "checkbox") field.checked = Boolean(value);
+      else field.value = Array.isArray(value) ? value.join(",") : value ?? "";
     });
     const title = $("[data-create-title][data-edit-title]", modal);
     if (title) title.textContent = data?.id ? title.dataset.editTitle : title.dataset.createTitle;
@@ -180,7 +182,7 @@
         if (!modal) return;
         $$("form", modal).forEach((form) => { if (!form.dataset.baseAction) form.dataset.baseAction = form.getAttribute("action") || ""; });
         const dataMap = [
-          ["editCustomer", "customer"], ["editProduct", "product"], ["editDelivery", "delivery"],
+          ["editProfessional", "professional"], ["editCustomer", "customer"], ["editProduct", "product"], ["editDelivery", "delivery"],
           ["editFaq", "faq"], ["movementItem", "movement"]
         ];
         let editing = false;

@@ -8,6 +8,9 @@ create = AppointmentsController.create
 cancel = AppointmentsController.cancel
 create_service = AppointmentsController.create_service
 create_professional = AppointmentsController.create_professional
+professionals = AppointmentsController.professionals
+update_professional = AppointmentsController.update_professional
+delete_professional = AppointmentsController.delete_professional
 save_business_hour = AppointmentsController.save_business_hour
 create_block = AppointmentsController.create_block
 delete_block = AppointmentsController.delete_block
@@ -24,6 +27,9 @@ __all__ = [
     "create",
     "create_block",
     "create_professional",
+    "professionals",
+    "update_professional",
+    "delete_professional",
     "create_service",
     "delete_block",
     "delete_service",

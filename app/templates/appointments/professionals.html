@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "components/ui.html" import empty_state %}
+{% set active_section = 'professionals' %}
+{% block title %}Profissionais{% endblock %}
+{% block page_id %}professionals{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><span class="eyebrow">Equipe e agenda</span><h1>Profissionais</h1><p>Gerencie os contatos e serviços da sua equipe.</p></div>
+  <div class="page-actions"><a class="button button-secondary" href="/appointments">Ver agenda</a><button class="button button-primary" type="button" data-modal-open="professional-modal"><i data-lucide="user-plus"></i>Novo profissional</button></div>
+</header>
+<section class="card data-card">
+  <header class="table-toolbar"><form method="get" class="toolbar-search"><i data-lucide="search"></i><input type="search" name="q" value="{{ search }}" placeholder="Buscar por nome, telefone ou e-mail" aria-label="Buscar profissionais"><button class="button button-secondary" type="submit">Pesquisar</button></form></header>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>Profissional</th><th>Contato</th><th>Serviços</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+  {% for person in professionals %}
+    <tr><td><div class="person-cell"><span class="avatar avatar-md">{{ person.name|first|upper }}</span><strong>{{ person.name }}</strong></div></td>
+    <td><div class="stacked-cell"><span>{{ person.phone or 'Sem telefone' }}</span><small>{{ person.email or 'Sem e-mail' }}</small></div></td>
+    <td>{% for service in person.services %}<span class="tag tag-soft">{{ service.name }}</span>{% else %}Todos os serviços{% endfor %}</td>
+    <td><span class="status-badge {{ 'success' if person.is_active else 'neutral' }}">{{ 'Ativo' if person.is_active else 'Inativo' }}</span></td>
+    <td><button class="button button-secondary button-sm" type="button" data-modal-open="professional-modal" data-edit-professional='{{ professional_data[person.id]|tojson }}'><i data-lucide="pencil"></i>Editar</button><button class="button button-secondary button-sm danger-text" type="button" data-confirm-action="/appointments/professionals/{{ person.id }}/delete" data-confirm-title="Excluir profissional?" data-confirm-message="Se houver agendamentos, o profissional será desativado para preservar o histórico."><i data-lucide="trash-2"></i>Excluir</button></td></tr>
+  {% else %}<tr><td colspan="5">{{ empty_state('users', 'Nenhum profissional encontrado', 'Cadastre um profissional ou ajuste sua pesquisa.', 'Cadastrar profissional', 'professional-modal') }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <footer class="table-footer">{{ professionals|length }} profissional(is)</footer>
+</section>
+<div class="modal" id="professional-modal" data-modal hidden>
+  <button class="modal-backdrop" type="button" data-modal-close aria-label="Fechar"></button>
+  <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="professional-modal-title">
+    <header class="modal-header"><div><h2 id="professional-modal-title" data-create-title="Novo profissional" data-edit-title="Editar profissional">Novo profissional</h2><p>Informe os dados e os serviços disponíveis para agendamento.</p></div><button class="icon-button" type="button" data-modal-close aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <form method="post" action="/appointments/professionals" data-base-action="/appointments/professionals" class="modal-form" data-entity-form="professional" data-ajax-form data-success-reload="true">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value=""><input type="hidden" name="services_present" value="">
+      <div class="modal-body form-stack">
+        <div class="field"><label for="professional-name">Nome completo <em>*</em></label><input id="professional-name" name="name" maxlength="160" required></div>
+        <div class="form-grid form-grid-2"><div class="field"><label for="professional-phone">Telefone</label><input id="professional-phone" name="phone" type="tel" maxlength="32" data-phone></div><div class="field"><label for="professional-email">E-mail</label><input id="professional-email" name="email" type="email" maxlength="255"></div></div>
+        <div class="field"><label for="professional-services">Serviços atendidos</label><select id="professional-services" name="service_ids" multiple size="5">{% for service in services %}<option value="{{ service.id }}">{{ service.name }}{{ ' (inativo)' if not service.is_active else '' }}</option>{% endfor %}</select><small class="field-hint">Sem seleção, atende todos os serviços. Use Ctrl ou Command para selecionar vários. Cadastre serviços na agenda.</small></div>
+        <div class="form-grid form-grid-2"><div class="field"><label for="professional-color">Cor na agenda</label><input id="professional-color" type="color" name="color" value="#14b8a6"></div><div class="field"><label for="professional-active">Status</label><select id="professional-active" name="is_active"><option value="true">Ativo</option><option value="false">Inativo</option></select></div></div>
+      </div>
+      <footer class="modal-footer"><button class="button button-secondary" type="button" data-modal-close>Cancelar</button><button class="button button-primary" type="submit">Salvar profissional</button></footer>
+    </form>
+  </section>
+</div>
+{% endblock %}
