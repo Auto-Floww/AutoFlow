@@ -70,6 +70,9 @@ jobs:
             ssh -i ~/.ssh/autoflow_vm \
               -o BatchMode=yes \
               -o IdentitiesOnly=yes \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=12 \
               "$VM_USER@$VM_HOST" \
               "deploy $GITHUB_SHA"
 

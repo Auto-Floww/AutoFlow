@@ -76,4 +76,11 @@ else
   echo "Receptor recebido sem versão; mantendo a cópia instalada." >&2
 fi
 
-bash "$APP_DIR/scripts/deploy-vm.sh"
+# Preserva o diagnóstico mesmo quando a conexão do runner é interrompida.
+# work/ já é preservado pelo rsync e o umask acima protege os arquivos.
+log_dir="$APP_DIR/work/deploy-logs"
+mkdir -p "$log_dir"
+log_file="$log_dir/$DEPLOY_REVISION.log"
+echo "Log deste deploy: $log_file"
+# pipefail mantém o código de falha do deploy mesmo quando tee termina com sucesso.
+bash "$APP_DIR/scripts/deploy-vm.sh" 2>&1 | tee -a "$log_file"
