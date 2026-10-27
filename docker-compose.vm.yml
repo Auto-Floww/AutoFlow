@@ -11,9 +11,22 @@ services:
       sh -c "flask --app run:app db upgrade &&
       gunicorn --workers 1 --threads 4 --timeout 90 --bind 0.0.0.0:5000 run:app"
     ports: !override []
+    healthcheck:
+      interval: 30s
+      timeout: 15s
+      start_period: 120s
+      retries: 5
 
   worker:
     command: celery -A celery_worker.celery worker --loglevel=INFO --concurrency=1
+    depends_on:
+      web:
+        condition: service_healthy
+
+  beat:
+    depends_on:
+      web:
+        condition: service_healthy
 
   caddy:
     image: caddy:2-alpine

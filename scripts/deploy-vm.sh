@@ -68,7 +68,10 @@ if ! "${compose[@]}" up -d --no-build --remove-orphans; then
   failed_web_container="$("${compose[@]}" ps -a -q web 2>/dev/null || true)"
   if [[ -n "$failed_web_container" ]]; then
     docker inspect --format '{{json .State.Health}}' "$failed_web_container" >&2 || true
+    docker inspect --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}}' "$failed_web_container" >&2 || true
   fi
+  free -h >&2 || true
+  docker stats --no-stream >&2 || true
   echo "A atualização dos serviços falhou. Restaurando a imagem anterior..." >&2
   restore_previous_release
   exit 1
@@ -91,7 +94,8 @@ if [[ -z "$web_container" ]]; then
 fi
 
 healthy=false
-for _ in {1..18}; do
+# Compatível com o período inicial e as tentativas do healthcheck da VM.
+for _ in {1..60}; do
   health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$web_container")"
   if [[ "$health_status" == "healthy" ]]; then
     healthy=true
