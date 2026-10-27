@@ -44,7 +44,7 @@ jobs:
     name: Atualizar produção
     needs: testes
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     environment: production
     steps:
       - name: Baixar o código

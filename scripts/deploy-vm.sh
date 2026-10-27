@@ -29,9 +29,12 @@ compose=(
 
 "${compose[@]}" config --quiet
 
-echo "Removendo camadas Docker intermediárias..."
-docker image prune -af
-docker builder prune -f >/dev/null 2>&1 || true
+echo "Recursos disponíveis antes do build:"
+df -h "$APP_DIR"
+free -h || true
+docker system df || true
+# Preserva imagens e cache para reaproveitar a instalação das dependências.
+# A limpeza de imagens pendentes continua após o deploy bem-sucedido.
 
 rollback_available=false
 if docker image inspect autoflow-web:latest >/dev/null 2>&1; then
