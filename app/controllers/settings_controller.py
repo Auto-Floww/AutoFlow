@@ -165,12 +165,14 @@ def save_whatsapp():
     if integration is None:
         integration = WhatsAppIntegration(company_id=company_id, instance_name=instance_name)
         db.session.add(integration)
+    instance_changed = integration.instance_name != instance_name
     integration.instance_name = instance_name
     integration.display_name = str(data.get("display_name", "")).strip()[:100] or None
-    # Instancia nova fica pendente ate a verificacao de conexao ser feita.
-    integration.is_active = False
-    integration.status = "PENDING"
-    integration.last_error = None
+    # Uma nova instancia deve ser verificada sem desativar uma conexao existente.
+    if instance_changed or not integration.id:
+        integration.is_active = False
+        integration.status = "PENDING"
+        integration.last_error = None
     try:
         db.session.flush()
         record_audit(
@@ -183,7 +185,7 @@ def save_whatsapp():
         db.session.rollback()
         return failure("Este nome de instancia ja esta em uso.", status=409)
     return success(
-        "Configuracao salva. Verifique a conexao para ativar a integracao.",
+        "Configuracao salva. A conexao sera verificada automaticamente.",
         endpoint="settings.whatsapp",
     )
 

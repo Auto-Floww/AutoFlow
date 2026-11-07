@@ -710,10 +710,23 @@
       const button = event.currentTarget; const phone = window.prompt("Informe o número com DDD para receber a mensagem de teste:"); if (!phone) return; setLoading(button, true);
       try { const payload = await apiFetch(button.dataset.url, { method: "POST", body: { phone } }); toast(payload.message || "Mensagem de teste enviada."); } catch (error) { toast(error.message, "error"); } finally { setLoading(button, false); }
     });
-    $("[data-check-webhook]")?.addEventListener("click", async (event) => {
-      const button = event.currentTarget; setLoading(button, true);
-      try { const payload = await apiFetch(button.dataset.url, { method: "POST", body: {} }); toast(payload.message || "Conexão verificada."); } catch (error) { toast(error.message, "error"); } finally { setLoading(button, false); }
-    });
+    const connection = $("[data-whatsapp-connection]");
+    let checkingConnection = false;
+    const checkConnection = async () => {
+      if (!connection || connection.dataset.configured !== "true" || checkingConnection || doc.hidden) return;
+      checkingConnection = true;
+      try {
+        const response = await apiFetch(connection.dataset.checkUrl, { method: "POST", body: {} });
+        if (Boolean(response.data?.connected) !== (connection.dataset.connected === "true")) window.location.reload();
+      } catch (_) {
+        // Keep the current display when the service is temporarily unavailable.
+      } finally { checkingConnection = false; }
+    };
+    if (connection?.dataset.configured === "true") {
+      checkConnection();
+      window.setInterval(checkConnection, 5000);
+      doc.addEventListener("visibilitychange", () => { if (!doc.hidden) checkConnection(); });
+    }
     const qrPanel = $("[data-qrcode-panel]");
     const qrImage = $("[data-qrcode-image]", qrPanel || doc);
     const qrPlaceholder = $("[data-qrcode-placeholder]", qrPanel || doc);
@@ -734,6 +747,7 @@
           if (qrFeedback) qrFeedback.textContent = "A conexão com o WhatsApp já está ativa.";
           if (printButton) printButton.disabled = true;
           refreshIcons(qrPanel);
+          await checkConnection();
           return;
         }
         if (!data.qr_code) throw new Error("A Evolution API não retornou um QR Code.");

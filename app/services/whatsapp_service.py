@@ -334,8 +334,7 @@ class WhatsAppGateway:
             integration = WhatsAppIntegration.query.filter_by(
                 id=integration.id, company_id=int(company_id)
             ).one()
-            integration.status = "ERROR"
-            integration.is_active = False
+            # Uma falha de consulta nao comprova que a instancia desconectou.
             integration.last_error = exc.message[:2000]
             db.session.commit()
             raise
