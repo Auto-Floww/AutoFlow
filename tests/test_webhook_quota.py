@@ -150,7 +150,7 @@ def test_duplicate_is_idempotent_and_does_not_consume_quota(
     assert Conversation.query.filter_by(company_id=company.id).count() == 1
 
 
-def test_pending_integration_is_rejected_before_persistence(
+def test_pending_integration_accepts_authenticated_first_message(
     client, app, company_factory
 ):
     secret = _configure(app, hourly=300, sender_minute=30)
@@ -162,8 +162,10 @@ def test_pending_integration_is_rejected_before_persistence(
     )
 
     assert response.status_code == 200
-    assert response.get_json()["events"] == 0
-    assert Message.query.count() == 0
-    assert Customer.query.count() == 0
-    assert Conversation.query.count() == 0
-    assert TaskOutbox.query.count() == 0
+    assert response.get_json()["events"] == 1
+    assert Message.query.count() == 1
+    assert Customer.query.count() == 1
+    assert Conversation.query.count() == 1
+    assert TaskOutbox.query.count() == 1
+    integration = WhatsAppIntegration.query.filter_by(instance_name="phone-pending").one()
+    assert integration.status == "CONNECTED"

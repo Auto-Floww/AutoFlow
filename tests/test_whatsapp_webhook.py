@@ -150,6 +150,45 @@ def test_valid_message_is_stored_once_and_enqueued_once(
     assert outbox.status == "PENDING"
 
 
+def test_pending_connection_accepts_verified_first_message(client, app, company_factory):
+    company = company_factory()
+    integration = WhatsAppIntegration(
+        company_id=company.id, instance_name="loja-pendente", status="PENDING", is_active=False
+    )
+    db.session.add(integration)
+    db.session.commit()
+    app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
+
+    response = client.post("/webhooks/evolution", json=_evolution_payload("loja-pendente"))
+
+    assert response.status_code == 200
+    assert response.get_json()["events"] == 1
+    db.session.refresh(integration)
+    assert integration.status == "CONNECTED"
+    assert integration.is_active is True
+    assert Message.query.filter_by(company_id=company.id).count() == 1
+
+
+def test_connection_webhook_updates_status(client, app, company_factory):
+    company = company_factory()
+    integration = WhatsAppIntegration(
+        company_id=company.id, instance_name="loja-conexao", status="PENDING", is_active=False
+    )
+    db.session.add(integration)
+    db.session.commit()
+    app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
+
+    response = client.post("/webhooks/evolution", json={
+        "event": "connection.update", "instance": "loja-conexao",
+        "apikey": "test-evolution-key", "data": {"state": "open"},
+    })
+
+    assert response.status_code == 200
+    db.session.refresh(integration)
+    assert integration.status == "CONNECTED"
+    assert integration.is_active is True
+
+
 def test_group_messages_are_ignored(client, app, company_factory):
     """Mensagens vindas de grupos (@g.us) devem ser silenciosamente ignoradas."""
     company = company_factory()

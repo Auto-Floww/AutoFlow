@@ -88,3 +88,11 @@ def test_human_send_auto_claims_conversation_while_ai_is_active(
     assert conversation.ai_status == "PAUSED"
     assert conversation.assigned_user_id == tenant_user.id
     assert Message.query.filter_by(conversation_id=conversation.id).count() == 1
+
+
+def test_updates_reports_changes_to_other_conversations(client, login_as, tenant_user):
+    login_as(tenant_user)
+    first = client.get("/conversations/updates").get_json()["revision"]
+    _conversation(tenant_user.company_id)
+    second = client.get("/conversations/updates").get_json()["revision"]
+    assert first != second

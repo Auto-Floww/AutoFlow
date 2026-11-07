@@ -536,15 +536,19 @@
       catch (_) { if (status) status.textContent = "Não salvo"; }
     }, 700));
     $("[data-focus-note]")?.addEventListener("click", () => note?.focus());
-    if (app.dataset.pollUrl && !doc.hidden) {
+    if (app.dataset.listPollUrl) {
       let lastId = Number($$('[data-message-id]', app).at(-1)?.dataset.messageId || 0);
       window.setInterval(async () => {
         if (doc.hidden) return;
         try {
-          const payload = await apiFetch(`${app.dataset.pollUrl}${app.dataset.pollUrl.includes("?") ? "&" : "?"}after=${lastId}`);
-          const fresh = payload.messages || [];
-          fresh.forEach((message) => { lastId = Math.max(lastId, Number(message.id) || 0); });
-          if (fresh.length) window.location.reload();
+          const [chat, listState] = await Promise.all([
+            app.dataset.pollUrl
+              ? apiFetch(`${app.dataset.pollUrl}${app.dataset.pollUrl.includes("?") ? "&" : "?"}after=${lastId}`)
+              : Promise.resolve({ messages: [] }),
+            apiFetch(app.dataset.listPollUrl)
+          ]);
+          const changed = (chat.messages || []).length > 0 || listState.revision !== app.dataset.listRevision;
+          if (changed && !input?.value.trim()) window.location.reload();
         } catch (_) { /* Polling is best-effort. */ }
       }, 10000);
     }

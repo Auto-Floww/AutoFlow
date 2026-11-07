@@ -29,6 +29,21 @@ from app.tenant import current_company_id, tenant_get_or_404
 bp = Blueprint("conversations", __name__, url_prefix="/conversations")
 
 
+def _list_revision(company_id: int) -> str:
+    """A small fingerprint for changes outside the currently open chat."""
+    rows = (
+        Conversation.for_company(company_id)
+        .order_by(Conversation.last_message_at.desc(), Conversation.updated_at.desc())
+        .limit(100)
+        .all()
+    )
+    return "|".join(
+        f"{item.id}:{item.last_message_at.isoformat() if item.last_message_at else ''}:"
+        f"{item.unread_count}:{item.ai_status}:{item.status}"
+        for item in rows
+    )
+
+
 def _serialize_message(message: Message) -> dict:
     data = model_dict(
         message,
@@ -156,9 +171,16 @@ def index():
         unread_conversations=unread_conversations,
         total_conversations=len(conversations),
         poll_url=(url_for("conversations.detail", conversation_id=selected.id) if selected else ""),
+        list_revision=_list_revision(company_id),
         ai_name=(ai_settings.assistant_name if ai_settings else "Assistente IA"),
         filters={"q": search, "status": status, "ai_status": ai_status},
     )
+
+
+@bp.get("/updates")
+@login_required
+def updates():
+    return jsonify(revision=_list_revision(current_company_id()))
 
 
 @bp.get("/<int:conversation_id>")

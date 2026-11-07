@@ -119,9 +119,16 @@ class WhatsAppGateway:
     @classmethod
     def iter_events(cls, payload: dict[str, Any]) -> Iterable[dict[str, Any]]:
         event_name = str(payload.get("event") or "").lower().replace("_", ".")
+        instance_name = str(payload.get("instance") or "").strip()
+        if event_name == "connection.update":
+            data = payload.get("data") or {}
+            if isinstance(data, dict) and instance_name:
+                state = str(data.get("state") or data.get("status") or "").lower()
+                if state in {"open", "connected", "close", "closed", "connecting"}:
+                    yield {"kind": "connection", "instance_name": instance_name, "state": state}
+            return
         if event_name != "messages.upsert":
             return
-        instance_name = str(payload.get("instance") or "").strip()
         raw_data = payload.get("data")
         rows = raw_data if isinstance(raw_data, list) else [raw_data]
         for data in rows:
@@ -133,7 +140,12 @@ class WhatsAppGateway:
             remote_jid = str(key.get("remoteJid") or "")
             if remote_jid.endswith("@g.us"):
                 continue
-            sender = cls._phone_from_jid(remote_jid or payload.get("sender"))
+            sender_jid = remote_jid
+            if remote_jid.endswith("@lid"):
+                sender_jid = str(key.get("remoteJidAlt") or data.get("remoteJidAlt") or payload.get("sender") or "")
+                if not sender_jid.endswith(("@s.whatsapp.net", "@c.us")):
+                    continue
+            sender = cls._phone_from_jid(sender_jid or payload.get("sender"))
             external_message_id = str(key.get("id") or "").strip()
             if not instance_name or not sender or not external_message_id:
                 continue
@@ -174,12 +186,25 @@ class WhatsAppGateway:
             instance_name = event["instance_name"]
             if allowed_instances is not None and instance_name not in allowed_instances:
                 raise ValidationError("Webhook fora do escopo da instancia autenticada")
-            integration = WhatsAppIntegration.query.filter_by(
-                instance_name=instance_name,
-                is_active=True,
-                status="CONNECTED",
-            ).one_or_none()
+            integration = WhatsAppIntegration.query.filter_by(instance_name=instance_name).one_or_none()
             if integration is None:
+                continue
+            if event["kind"] == "connection":
+                connected = event["state"] in {"open", "connected"}
+                integration.status = "CONNECTED" if connected else "PENDING"
+                integration.is_active = connected
+                integration.last_error = None if connected else "A instancia ainda nao esta conectada ao WhatsApp"
+                integration.last_webhook_at = utcnow()
+                db.session.commit()
+                processed.append({"kind": "connection", "company_id": integration.company_id, "connected": connected})
+                continue
+            if integration.status == "PENDING":
+                # A verified inbound message proves the QR connection even if
+                # Evolution's connection.update webhook arrived out of order.
+                integration.status = "CONNECTED"
+                integration.is_active = True
+                integration.last_error = None
+            elif not integration.is_active or integration.status != "CONNECTED":
                 continue
             company_id = integration.company_id
             existing = InboundQuotaPolicy.enforce_inbound(

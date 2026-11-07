@@ -7,7 +7,7 @@
 {% block page_id %}conversations{% endblock %}
 {% block body_class %}conversation-page{% endblock %}
 {% block content %}
-<div class="conversation-shell" data-conversation-app data-mobile-panel="{{ 'chat' if active else 'list' }}" data-conversation-id="{{ active.id if active else '' }}" data-poll-url="{{ poll_url|default('') }}">
+<div class="conversation-shell" data-conversation-app data-mobile-panel="{{ 'chat' if active else 'list' }}" data-conversation-id="{{ active.id if active else '' }}" data-poll-url="{{ poll_url|default('') }}" data-list-revision="{{ list_revision|default('') }}" data-list-poll-url="{{ url_for('conversations.updates') }}">
   <section class="conversation-list-panel" data-conversation-panel="list" aria-label="Lista de conversas">
     <header class="conversation-list-head">
       <div class="panel-title-row"><div><h1>Conversas</h1><p>{{ total_conversations|default(conversation_list|length) }} atendimentos</p></div><button class="icon-button" type="button" aria-label="Nova conversa" data-modal-open="new-conversation-modal"><i data-lucide="square-pen"></i></button></div>
