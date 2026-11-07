@@ -215,6 +215,7 @@ REGRAS ABSOLUTAS:
         conversation: Conversation,
         *,
         through_message_id: int | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> tuple[str, dict[str, Any]]:
         company_id = conversation.company_id
         company = Company.query.filter_by(id=company_id).one()
@@ -237,14 +238,14 @@ REGRAS ABSOLUTAS:
                     ),
                 }
             )
-        messages.extend(
-            ConversationOperations.groq_history(
+        if history is None:
+            history = ConversationOperations.groq_history(
                 company_id,
                 conversation.id,
                 limit=history_limit,
                 through_message_id=through_message_id,
             )
-        )
+        messages.extend(history)
         return self.run_tool_loop(
             messages,
             context=ToolContext(

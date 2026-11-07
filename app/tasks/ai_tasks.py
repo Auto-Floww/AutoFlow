@@ -16,6 +16,7 @@ from app.models.base import utcnow
 from app.security import decrypt_secret
 from app.services.ai import AnswerConversationService, SummarizeConversationService
 from app.services.auth import SendPasswordResetEmailService
+from app.services.conversation_service import ConversationOperations
 from app.services.conversations import (
     RecordOutboundMessageService,
     SetConversationSummaryService,
@@ -129,9 +130,7 @@ def process_message(self, message_id: int) -> dict:
         conversation = Conversation.query.filter_by(
             id=message.conversation_id, company_id=company_id
         ).one()
-        # Coalesce messages that arrived before this Groq request starts. This keeps
-        # rapid consecutive WhatsApp messages in one answer and makes their tasks
-        # idempotently observe PROCESSED afterwards.
+        # Coalesce only messages that fit in the history sent to Groq.
         batch_tail = (
             Message.query.filter(
                 Message.company_id == company_id,
@@ -143,8 +142,35 @@ def process_message(self, message_id: int) -> dict:
             .first()
         )
         through_message_id = max(message.id, batch_tail.id if batch_tail else message.id)
+        settings = AISettings.query.filter_by(company_id=company_id).one_or_none()
+        history_limit = settings.history_limit if settings else 30
+        history = ConversationOperations.recent_messages(
+            company_id,
+            conversation.id,
+            limit=history_limit,
+            through_message_id=through_message_id,
+        )
+        if all(row.id != message.id for row in history):
+            through_message_id = message.id
+            history = ConversationOperations.recent_messages(
+                company_id,
+                conversation.id,
+                limit=history_limit,
+                through_message_id=through_message_id,
+            )
+        batched_ids = [
+            row.id
+            for row in history
+            if row.direction == "INBOUND"
+            and row.processing_status in {"PENDING", "PROCESSING"}
+            and row.content
+        ]
+        if message.id not in batched_ids:
+            batched_ids.append(message.id)
+        through_message_id = max(batched_ids)
         answer, ai_metadata = AnswerConversationService().execute(
-            conversation, through_message_id=through_message_id
+            conversation,
+            history=ConversationOperations.format_groq_history(history),
         )
 
         # A human may have claimed the chat while Groq was processing.
@@ -174,7 +200,7 @@ def process_message(self, message_id: int) -> dict:
             Message.company_id == company_id,
             Message.conversation_id == conversation.id,
             Message.direction == "INBOUND",
-            Message.id <= through_message_id,
+            Message.id.in_(batched_ids),
             Message.processing_status.in_(("PENDING", "PROCESSING")),
         ).with_for_update().all()
         processed_at = utcnow()
@@ -188,7 +214,6 @@ def process_message(self, message_id: int) -> dict:
             idempotency_key=f"send-whatsapp-message:{outbound.id}",
             company_id=company_id,
         )
-        settings = AISettings.query.filter_by(company_id=company_id).one_or_none()
         threshold = settings.summary_threshold if settings else 60
         summary_cursor = int(
             (conversation.memory_json or {}).get("summarized_through_message_id") or 0

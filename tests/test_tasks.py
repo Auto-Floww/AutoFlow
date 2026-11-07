@@ -5,11 +5,12 @@ from datetime import timedelta
 import pytest
 
 from app.extensions import db
-from app.models import Conversation, Customer, Message
+from app.models import AISettings, Conversation, Customer, Message
 from app.models.base import utcnow
 from app.services.exceptions import ValidationError
+from app.services.groq_service import GroqService
 from app.services.whatsapp_service import WhatsAppService
-from app.tasks.ai_tasks import send_whatsapp_message
+from app.tasks.ai_tasks import process_message, send_whatsapp_message
 
 
 def _outbound_message(company_id: int) -> Message:
@@ -42,6 +43,44 @@ def _outbound_message(company_id: int) -> Message:
     db.session.add(message)
     db.session.commit()
     return message
+
+
+def test_process_message_only_completes_messages_in_groq_history(tenant_user, monkeypatch):
+    outbound = _outbound_message(tenant_user.company_id)
+    db.session.add(AISettings(company_id=tenant_user.company_id, history_limit=2))
+    inbounds = [
+        Message(
+            company_id=outbound.company_id,
+            conversation_id=outbound.conversation_id,
+            customer_id=outbound.customer_id,
+            direction="INBOUND",
+            sender_type="CUSTOMER",
+            content=f"Pergunta {number}",
+        )
+        for number in range(1, 4)
+    ]
+    db.session.add_all(inbounds)
+    db.session.commit()
+    requests = []
+
+    def answer(service, messages, **kwargs):
+        requests.append([item["content"] for item in messages if item["role"] == "user"])
+        return "Resposta", {}
+
+    monkeypatch.setattr(GroqService, "run_tool_loop", answer)
+    monkeypatch.setattr(
+        WhatsAppService, "send_text", lambda *args, **kwargs: {"key": {"id": "test-id"}}
+    )
+    first, second, third = inbounds
+
+    result = process_message.run(first.id)
+    assert result["batched_message_ids"] == [first.id]
+    assert second.processing_status == third.processing_status == "PENDING"
+
+    result = process_message.run(second.id)
+    assert set(result["batched_message_ids"]) == {second.id, third.id}
+    assert process_message.run(third.id)["status"] == "processed"
+    assert requests == [["Pergunta 1"], ["Pergunta 2", "Pergunta 3"]]
 
 
 def test_send_whatsapp_transitions_sending_to_sent(

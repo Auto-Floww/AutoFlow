@@ -313,13 +313,19 @@ class ConversationOperations:
         limit: int = 30,
         through_message_id: int | None = None,
     ) -> list[dict[str, str]]:
+        return ConversationOperations.format_groq_history(
+            ConversationOperations.recent_messages(
+                company_id,
+                conversation_id,
+                limit=limit,
+                through_message_id=through_message_id,
+            )
+        )
+
+    @staticmethod
+    def format_groq_history(messages: list[Message]) -> list[dict[str, str]]:
         history: list[dict[str, str]] = []
-        for message in ConversationOperations.recent_messages(
-            company_id,
-            conversation_id,
-            limit=limit,
-            through_message_id=through_message_id,
-        ):
+        for message in messages:
             if not message.content:
                 continue
             if message.direction == "INBOUND":
@@ -349,18 +355,7 @@ class ConversationOperations:
         if through_message_id is not None:
             query = query.filter(Message.id <= int(through_message_id))
         rows = query.order_by(Message.id).limit(min(max(int(limit), 1), 200)).all()
-        history: list[dict[str, str]] = []
-        for message in rows:
-            if not message.content:
-                continue
-            if message.direction == "INBOUND":
-                role = "user"
-            elif message.sender_type in {"AI", "AGENT"}:
-                role = "assistant"
-            else:
-                continue
-            history.append({"role": role, "content": message.content})
-        return history
+        return ConversationOperations.format_groq_history(rows)
 
     @staticmethod
     def set_summary(
