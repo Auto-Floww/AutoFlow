@@ -20,5 +20,18 @@ class SummarizeConversationService:
             through_message_id=through_message_id,
         )
 
+    def execute_batch(
+        self,
+        conversation,
+        *,
+        after_message_id: int = 0,
+        through_message_id: int | None = None,
+    ) -> tuple[str, int, bool]:
+        return self.ai_gateway.summarize_conversation_batch(
+            conversation,
+            after_message_id=after_message_id,
+            through_message_id=through_message_id,
+        )
+
 
 __all__ = ["SummarizeConversationService"]

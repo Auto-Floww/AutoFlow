@@ -1,7 +1,12 @@
 """Catálogo de produtos, variantes e permissões."""
 
+import pytest
+
 from app.extensions import db
-from app.models import Inventory, InventoryMovement, Product
+from app.models import Inventory, InventoryMovement, Product, ProductVariant
+from app.services.ai_tools import build_default_registry
+from app.services.exceptions import NotFoundError
+from app.services.tool_registry import ToolContext
 
 
 def test_owner_creates_product_and_initial_inventory(
@@ -73,3 +78,76 @@ def test_agent_cannot_mutate_catalog(client, login_as, user_factory):
 
     assert response.status_code == 403
     assert Product.query.filter_by(sku="NOPE").first() is None
+
+
+def test_ai_catalog_tools_never_return_inactive_products_or_variants(tenant_user):
+    active_product = Product(
+        company_id=tenant_user.company_id,
+        name="Camisa ativa",
+        sku="CAM-A",
+        price="50.00",
+    )
+    inactive_product = Product(
+        company_id=tenant_user.company_id,
+        name="Camisa arquivada",
+        sku="CAM-X",
+        price="40.00",
+        is_active=False,
+    )
+    db.session.add_all([active_product, inactive_product])
+    db.session.flush()
+    active_variant = ProductVariant(
+        company_id=tenant_user.company_id,
+        product_id=active_product.id,
+        name="Azul M",
+        sku="CAM-A-M",
+        is_active=True,
+    )
+    inactive_variant = ProductVariant(
+        company_id=tenant_user.company_id,
+        product_id=active_product.id,
+        name="Vermelha G",
+        sku="CAM-A-G",
+        is_active=False,
+    )
+    archived_variant = ProductVariant(
+        company_id=tenant_user.company_id,
+        product_id=inactive_product.id,
+        name="Preta P",
+        sku="CAM-X-P",
+        is_active=True,
+    )
+    db.session.add_all([active_variant, inactive_variant, archived_variant])
+    db.session.flush()
+    db.session.add(
+        Inventory(
+            company_id=tenant_user.company_id,
+            variant_id=inactive_variant.id,
+            quantity=9,
+        )
+    )
+    db.session.commit()
+    registry = build_default_registry()
+    context = ToolContext(company_id=tenant_user.company_id)
+
+    search = registry.execute("search_products", {}, context)
+    assert search["ok"] is True
+    assert [item["id"] for item in search["data"]] == [active_product.id]
+    assert [item["sku"] for item in search["data"][0]["variants"]] == ["CAM-A-M"]
+
+    active_lookup = registry.execute(
+        "get_product", {"sku": "CAM-A-M"}, context
+    )
+    assert active_lookup["ok"] is True
+    assert [item["sku"] for item in active_lookup["data"]["variants"]] == ["CAM-A-M"]
+    with pytest.raises(NotFoundError):
+        registry.execute("get_product", {"sku": "CAM-A-G"}, context)
+    with pytest.raises(NotFoundError):
+        registry.execute("get_product", {"product_id": inactive_product.id}, context)
+    with pytest.raises(NotFoundError):
+        registry.execute("get_product", {"sku": "CAM-X-P"}, context)
+
+    inventory = registry.execute(
+        "check_inventory", {"variant_id": inactive_variant.id}, context
+    )
+    assert inventory == {"ok": True, "data": []}

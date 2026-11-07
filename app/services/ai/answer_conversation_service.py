@@ -13,12 +13,15 @@ class AnswerConversationService:
         *,
         through_message_id: int | None = None,
         history: list[dict[str, str]] | None = None,
+        inbound_batch: tuple[int, ...] = (),
     ):
+        context = {"inbound_batch": inbound_batch} if inbound_batch else {}
         if history is not None:
-            return self.ai_gateway.answer_conversation(conversation, history=history)
+            return self.ai_gateway.answer_conversation(conversation, history=history, **context)
         return self.ai_gateway.answer_conversation(
             conversation,
             through_message_id=through_message_id,
+            **context,
         )
 
 

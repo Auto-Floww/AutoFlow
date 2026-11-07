@@ -3,7 +3,7 @@
 import pytest
 
 from app.extensions import db
-from app.models import Inventory, Product
+from app.models import Inventory, Product, Service
 from app.services.ai_tools import build_default_registry
 from app.services.catalog_service import CatalogService
 from app.services.exceptions import ValidationError
@@ -16,6 +16,7 @@ EXPECTED_TOOLS = {
     "check_inventory",
     "get_delivery_options",
     "get_business_hours",
+    "search_appointment_services",
     "search_faq",
     "search_knowledge",
     "get_available_appointments",
@@ -114,3 +115,58 @@ def test_unknown_tool_and_bad_arguments_are_safe(tenant_user):
     error = registry.safe_error(RuntimeError("database password must not leak"))
     assert error["error"] == "tool_execution_failed"
     assert "password" not in error["message"]
+
+
+def test_search_appointment_services_finds_active_company_services_and_limits(
+    tenant_user, company_factory
+):
+    other = company_factory(name="Outro salão")
+    haircut = Service(
+        company_id=tenant_user.company_id,
+        name="Corte de cabelo",
+        duration_minutes=45,
+    )
+    beard = Service(company_id=tenant_user.company_id, name="Barba")
+    inactive = Service(
+        company_id=tenant_user.company_id,
+        name="Corte de cabelo infantil",
+        is_active=False,
+    )
+    foreign = Service(company_id=other.id, name="Corte de cabelo premium")
+    db.session.add_all([haircut, beard, inactive, foreign])
+    db.session.commit()
+
+    registry = build_default_registry()
+    context = ToolContext(company_id=tenant_user.company_id)
+
+    matching = registry.execute(
+        "search_appointment_services", {"query": "corte de cabelo"}, context
+    )
+    assert matching == {
+        "ok": True,
+        "data": [
+            {
+                "id": haircut.id,
+                "name": "Corte de cabelo",
+                "duration_minutes": 45,
+            }
+        ],
+    }
+
+    listed = registry.execute(
+        "search_appointment_services", {"limit": 1}, context
+    )
+    assert listed["ok"] is True
+    assert len(listed["data"]) == 1
+    assert listed["data"][0]["id"] == beard.id
+
+
+def test_available_appointments_tool_explains_professional_is_optional():
+    spec = next(
+        item
+        for item in build_default_registry().schemas()
+        if item["function"]["name"] == "get_available_appointments"
+    )
+
+    assert "optional" in spec["function"]["description"]
+    assert "no preference" in spec["function"]["description"]

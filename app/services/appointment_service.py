@@ -268,8 +268,8 @@ class AppointmentOperations:
         query = Professional.for_company(company_id).filter(Professional.is_active.is_(True))
         if professional_id:
             query = query.filter(Professional.id == professional_id)
-        professionals = query.all()
-        results: list[dict] = []
+        professionals = query.order_by(Professional.id).all()
+        candidates: list[tuple[datetime, int, Professional, datetime]] = []
         tenant_tz = _timezone(company.timezone)
         rules = AppointmentOperations.booking_rules(company)
         earliest_utc = utcnow() + timedelta(hours=rules["minimum_notice_hours"])
@@ -277,6 +277,9 @@ class AppointmentOperations:
         # A granularidade é política da empresa e não pode ser substituída pelo cliente.
         step = timedelta(minutes=rules["slot_interval"])
         duration = timedelta(minutes=service.duration_minutes + service.buffer_minutes)
+        cap = min(max(int(limit), 0), 100)
+        if cap == 0:
+            return []
         for professional in professionals:
             if professional.services and service not in professional.services:
                 continue
@@ -287,28 +290,37 @@ class AppointmentOperations:
                 continue
             local_cursor = datetime.combine(local_day, window[0], tenant_tz)
             local_close = datetime.combine(local_day, window[1], tenant_tz)
-            while local_cursor + duration <= local_close and len(results) < min(limit, 100):
+            while local_cursor + duration <= local_close:
                 start_utc = local_cursor.astimezone(timezone.utc).replace(tzinfo=None)
                 end_utc = start_utc + duration
-                if earliest_utc <= start_utc <= latest_utc and not AppointmentOperations._overlap_exists(
-                    company_id, professional.id, start_utc, end_utc
-                ):
-                    results.append(
-                        {
-                            "professional_id": professional.id,
-                            "professional_name": professional.name,
-                            "time": local_cursor.strftime("%H:%M"),
-                            "value": local_cursor.strftime("%H:%M"),
-                            "label": local_cursor.strftime("%H:%M"),
-                            "starts_at": local_cursor.isoformat(),
-                            "ends_at": (local_cursor + duration).isoformat(),
-                            "timezone": company.timezone,
-                        }
-                    )
+                if earliest_utc <= start_utc <= latest_utc:
+                    candidates.append((start_utc, professional.id, professional, local_cursor))
                 local_cursor += step
-            if len(results) >= min(limit, 100):
+        # Build candidates across every professional before applying the limit so
+        # iteration order cannot hide an earlier slot belonging to a later pro.
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        results: list[dict] = []
+        for start_utc, professional_id, professional, local_cursor in candidates:
+            end_utc = start_utc + duration
+            if AppointmentOperations._overlap_exists(
+                company_id, professional_id, start_utc, end_utc
+            ):
+                continue
+            results.append(
+                {
+                    "professional_id": professional_id,
+                    "professional_name": professional.name,
+                    "time": local_cursor.strftime("%H:%M"),
+                    "value": local_cursor.strftime("%H:%M"),
+                    "label": local_cursor.strftime("%H:%M"),
+                    "starts_at": local_cursor.isoformat(),
+                    "ends_at": (local_cursor + duration).isoformat(),
+                    "timezone": company.timezone,
+                }
+            )
+            if len(results) >= cap:
                 break
-        return sorted(results, key=lambda item: item["starts_at"])[:limit]
+        return results
 
     @staticmethod
     def create(

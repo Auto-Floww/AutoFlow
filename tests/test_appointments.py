@@ -12,6 +12,7 @@ from app.models import (
     ScheduleBlock,
     Service,
 )
+from app.services.appointment_service import AppointmentOperations
 
 
 def _schedule(company_id: int):
@@ -219,3 +220,38 @@ def test_schedule_block_uses_company_timezone_and_prevents_booking(
     )
     assert booking.status_code == 409
     assert Appointment.query.count() == 0
+
+
+def test_availability_limits_after_ordering_all_professionals(tenant_user):
+    _, service, first_professional = _schedule(tenant_user.company_id)
+    first_window = BusinessHour.query.filter_by(
+        company_id=tenant_user.company_id,
+        professional_id=first_professional.id,
+        weekday=0,
+    ).one()
+    first_window.opens_at = time(12, 0)
+    second_professional = Professional(
+        company_id=tenant_user.company_id, name="Dra. Bia"
+    )
+    second_professional.services.append(service)
+    db.session.add(second_professional)
+    db.session.flush()
+    db.session.add(
+        BusinessHour(
+            company_id=tenant_user.company_id,
+            professional_id=second_professional.id,
+            weekday=0,
+            opens_at=time(9, 0),
+            closes_at=time(18, 0),
+        )
+    )
+    db.session.commit()
+    day = _future_monday(9).date()
+
+    slots = AppointmentOperations.available_slots(
+        tenant_user.company_id, service_id=service.id, day=day, limit=1
+    )
+
+    assert len(slots) == 1
+    assert slots[0]["professional_id"] == second_professional.id
+    assert slots[0]["time"] == "09:00"

@@ -11,6 +11,7 @@ class SetConversationSummaryService:
         *,
         summary: str,
         summarized_through_message_id: int | None = None,
+        expected_cursor: int | None = None,
         commit: bool = True,
     ):
         return legacy.ConversationService.set_summary(
@@ -18,6 +19,7 @@ class SetConversationSummaryService:
             conversation_id,
             summary=summary,
             summarized_through_message_id=summarized_through_message_id,
+            expected_cursor=expected_cursor,
             commit=commit,
         )
 

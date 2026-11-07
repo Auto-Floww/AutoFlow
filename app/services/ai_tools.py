@@ -9,7 +9,14 @@ from typing import Literal
 from pydantic import Field
 
 from app.extensions import db
-from app.models import BusinessHour, Company, Conversation, Customer, ProductVariant
+from app.models import (
+    BusinessHour,
+    Company,
+    Conversation,
+    Customer,
+    ProductVariant,
+    Service,
+)
 from app.models.base import utcnow
 from app.services.appointment_service import AppointmentOperations
 from app.services.catalog_service import CatalogQueries
@@ -20,6 +27,7 @@ from app.services.exceptions import NotFoundError, ValidationError
 from app.services.inventory_service import InventoryOperations
 from app.services.knowledge_service import KnowledgeSearch
 from app.services.notification_service import NotificationOperations
+from app.services.outbox import DispatchOutboxBestEffortService
 from app.services.tool_registry import ToolContext, ToolInput, ToolRegistry, ToolSpec
 
 
@@ -64,6 +72,11 @@ class AvailableAppointmentsInput(ToolInput):
     date: str = Field(description="Local date in YYYY-MM-DD format")
     professional_id: int | None = Field(default=None, ge=1)
     limit: int = Field(default=12, ge=1, le=30)
+
+
+class SearchAppointmentServicesInput(ToolInput):
+    query: str | None = Field(default=None, min_length=1, max_length=120)
+    limit: int = Field(default=8, ge=1, le=20)
 
 
 class CreateAppointmentInput(ToolInput):
@@ -156,14 +169,23 @@ def _search_products(context: ToolContext, query=None, category=None, limit=8):
     rows = CatalogQueries.search(
         context.company_id, query_text=query, category=category, limit=limit
     )
-    result = [CatalogQueries.serialize(product) for product in rows]
+    result = [
+        CatalogQueries.serialize(product, include_inactive_variants=False)
+        for product in rows
+    ]
     _record_product_consultations(context, result)
     return result
 
 
 def _get_product(context: ToolContext, product_id=None, sku=None):
     result = CatalogQueries.serialize(
-        CatalogQueries.get(context.company_id, product_id=product_id, sku=sku)
+        CatalogQueries.get(
+            context.company_id,
+            product_id=product_id,
+            sku=sku,
+            active_only=True,
+        ),
+        include_inactive_variants=False,
     )
     _record_product_consultations(context, [result])
     return result
@@ -187,6 +209,15 @@ def _check_inventory(
         color=color,
         size=size,
     )
+    rows = [
+        inventory
+        for inventory in rows
+        if (
+            inventory.variant.product.is_active and inventory.variant.is_active
+            if inventory.variant is not None
+            else inventory.product is not None and inventory.product.is_active
+        )
+    ]
     result = [
         {
             "inventory_id": inventory.id,
@@ -263,6 +294,26 @@ def _available_appointments(
         professional_id=professional_id,
         limit=limit,
     )
+
+
+def _search_appointment_services(context: ToolContext, query=None, limit=8):
+    services_query = Service.for_company(context.company_id).filter(
+        Service.is_active.is_(True)
+    )
+    search = (query or "").strip()
+    if search:
+        services_query = services_query.filter(
+            Service.name.icontains(search, autoescape=True)
+        )
+    services = services_query.order_by(Service.name, Service.id).limit(limit).all()
+    return [
+        {
+            "id": service.id,
+            "name": service.name,
+            "duration_minutes": service.duration_minutes,
+        }
+        for service in services
+    ]
 
 
 def _create_appointment(
@@ -369,9 +420,18 @@ def _add_customer_tag(context: ToolContext, tag_name, customer_id=None):
 def _transfer_to_human(context: ToolContext, reason=None):
     if not context.conversation_id:
         raise ValidationError("No conversation is associated with this request")
-    conversation = ConversationOperations.transfer_to_human(
-        context.company_id, context.conversation_id, reason=reason
-    )
+    try:
+        conversation, outbox_id = ConversationOperations.transfer_from_ai(
+            context.company_id,
+            context.conversation_id,
+            reason=reason,
+            inbound_batch=context.inbound_batch,
+        )
+    except Exception:
+        db.session.rollback()
+        raise
+    if outbox_id is not None:
+        DispatchOutboxBestEffortService().execute(outbox_id)
     return {
         "conversation_id": conversation.id,
         "transferred": True,
@@ -422,8 +482,21 @@ def build_default_registry() -> ToolRegistry:
             _search_knowledge,
         ),
         ToolSpec(
+            "search_appointment_services",
+            (
+                "Find active appointment services by name, or list available services "
+                "when query is omitted. Returns internal service IDs for booking."
+            ),
+            SearchAppointmentServicesInput,
+            _search_appointment_services,
+        ),
+        ToolSpec(
             "get_available_appointments",
-            "Get current bookable appointment slots. Required before offering a time.",
+            (
+                "Get current bookable appointment slots. A professional is optional; "
+                "omit professional_id when the customer has no preference. Required "
+                "before offering a time."
+            ),
             AvailableAppointmentsInput,
             _available_appointments,
         ),

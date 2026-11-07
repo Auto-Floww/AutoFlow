@@ -16,12 +16,12 @@ from app.models.base import utcnow
 from app.security import decrypt_secret
 from app.services.ai import AnswerConversationService, SummarizeConversationService
 from app.services.auth import SendPasswordResetEmailService
-from app.services.conversation_service import ConversationOperations
+from app.services.conversation_service import HANDOFF_CONFIRMATION_KEY, ConversationOperations
 from app.services.conversations import (
     RecordOutboundMessageService,
     SetConversationSummaryService,
 )
-from app.services.exceptions import DomainError, ExternalServiceError
+from app.services.exceptions import ConflictError, DomainError, ExternalServiceError
 from app.services.notifications import CreateNotificationService
 from app.services.outbox import (
     DispatchOutboxBestEffortService,
@@ -149,6 +149,7 @@ def process_message(self, message_id: int) -> dict:
             conversation.id,
             limit=history_limit,
             through_message_id=through_message_id,
+            for_groq=True,
         )
         if all(row.id != message.id for row in history):
             through_message_id = message.id
@@ -157,6 +158,7 @@ def process_message(self, message_id: int) -> dict:
                 conversation.id,
                 limit=history_limit,
                 through_message_id=through_message_id,
+                for_groq=True,
             )
         batched_ids = [
             row.id
@@ -171,12 +173,15 @@ def process_message(self, message_id: int) -> dict:
         answer, ai_metadata = AnswerConversationService().execute(
             conversation,
             history=ConversationOperations.format_groq_history(history),
+            inbound_batch=(message.id, *(item for item in batched_ids if item != message.id)),
         )
+        if ai_metadata.get("human_handoff"):
+            return {"status": "transferred", "message_id": message.id}
 
         # A human may have claimed the chat while Groq was processing.
         conversation = Conversation.query.filter_by(
             id=message.conversation_id, company_id=company_id
-        ).with_for_update().one()
+        ).populate_existing().with_for_update().one()
         inbound = Message.query.filter_by(
             id=message.id, company_id=company_id
         ).with_for_update().one()
@@ -344,10 +349,18 @@ def send_whatsapp_message(self, message_id: int) -> dict:
     conversation = tenant_get(
         Conversation, message.company_id, message.conversation_id, lock=True
     )
+    db.session.refresh(conversation, with_for_update=True)
     # Last-moment handoff guard prevents a queued AI reply racing a human agent.
-    if message.sender_type == "AI" and (
-        conversation.ai_status != "ACTIVE" or conversation.human_requested
-    ):
+    ai_paused = conversation.ai_status != "ACTIVE" or conversation.human_requested
+    if (message.idempotency_key or "").startswith(HANDOFF_CONFIRMATION_KEY):
+        confirmation_id = (conversation.memory_json or {}).get("handoff_confirmation_id")
+        if not ai_paused or confirmation_id != message.id:
+            message.status = "FAILED"
+            message.processing_status = "SKIPPED"
+            message.error_message = "Handoff superseded before WhatsApp delivery"
+            db.session.commit()
+            return {"status": "handoff_superseded", "message_id": message.id}
+    elif message.sender_type == "AI" and ai_paused:
         message.status = "FAILED"
         message.processing_status = "SKIPPED"
         message.error_message = "AI paused before WhatsApp delivery"
@@ -426,33 +439,41 @@ def generate_summary(self, conversation_id: int) -> dict:
         return {"status": "missing", "conversation_id": conversation_id}
     company_id = conversation.company_id
     previous_cursor = int((conversation.memory_json or {}).get("summarized_through_message_id") or 0)
-    batch = (
-        Message.query.filter(
-            Message.company_id == company_id,
-            Message.conversation_id == conversation.id,
-            Message.id > previous_cursor,
-        )
-        .order_by(Message.id)
-        .limit(100)
-        .all()
-    )
-    if not batch:
-        return {"status": "current", "conversation_id": conversation.id}
-    cursor = batch[-1].id
     try:
-        summary = SummarizeConversationService().execute(
+        summary, cursor, has_more = SummarizeConversationService().execute_batch(
             conversation,
             after_message_id=previous_cursor,
-            through_message_id=cursor,
         )
+        if cursor == previous_cursor:
+            if has_more:
+                db.session.rollback()
+                raise self.retry(countdown=120, max_retries=30)
+            return {"status": "current", "conversation_id": conversation_id}
         SetConversationSummaryService().execute(
             company_id,
             conversation.id,
             summary=summary,
             summarized_through_message_id=cursor,
+            expected_cursor=previous_cursor,
+            commit=False,
         )
-        return {"status": "summarized", "conversation_id": conversation.id, "cursor": cursor}
+        continuation = None
+        if has_more:
+            continuation = EnqueueOutboxTaskService().execute(
+                "generate_summary",
+                {"conversation_id": conversation_id},
+                idempotency_key=f"generate-summary-continuation:{conversation_id}:{cursor}",
+                company_id=company_id,
+            )
+        db.session.commit()
+        if continuation is not None:
+            DispatchOutboxBestEffortService().execute(continuation.id)
+        return {"status": "summarized", "conversation_id": conversation_id, "cursor": cursor}
+    except ConflictError:
+        db.session.rollback()
+        return {"status": "stale", "conversation_id": conversation_id}
     except ExternalServiceError as exc:
+        db.session.rollback()
         if exc.retryable:
             raise self.retry(exc=exc, countdown=min(120, 2 ** (self.request.retries + 2)))
         raise

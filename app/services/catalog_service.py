@@ -41,10 +41,13 @@ class CatalogQueries:
         *,
         product_id: int | None = None,
         sku: str | None = None,
+        active_only: bool = False,
     ) -> Product:
         if not product_id and not sku:
             raise ValidationError("product_id or sku is required")
         query = Product.for_company(company_id)
+        if active_only:
+            query = query.filter(Product.is_active.is_(True))
         if product_id:
             query = query.filter(Product.id == int(product_id))
         else:
@@ -52,6 +55,8 @@ class CatalogQueries:
                 company_id=int(company_id), sku=sku
             ).one_or_none()
             if variant:
+                if active_only and (not variant.is_active or not variant.product.is_active):
+                    raise NotFoundError("Product not found")
                 return variant.product
             query = query.filter(Product.sku == sku)
         product = query.one_or_none()
@@ -60,7 +65,12 @@ class CatalogQueries:
         return product
 
     @staticmethod
-    def serialize(product: Product, *, include_inventory: bool = True) -> dict:
+    def serialize(
+        product: Product,
+        *,
+        include_inventory: bool = True,
+        include_inactive_variants: bool = True,
+    ) -> dict:
         result = {
             "id": product.id,
             "name": product.name,
@@ -78,6 +88,8 @@ class CatalogQueries:
             "variants": [],
         }
         for variant in product.variants:
+            if not include_inactive_variants and not variant.is_active:
+                continue
             item = {
                 "id": variant.id,
                 "name": variant.name,

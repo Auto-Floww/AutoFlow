@@ -2,6 +2,7 @@
 
 from app.extensions import db
 from app.models import Conversation, Customer, Message, TaskOutbox
+from app.services.conversation_service import ConversationOperations
 
 
 def _conversation(company_id: int) -> Conversation:
@@ -23,6 +24,39 @@ def _conversation(company_id: int) -> Conversation:
     db.session.add(conversation)
     db.session.commit()
     return conversation
+
+
+def test_groq_history_limits_only_messages_the_customer_could_have_seen(tenant_user):
+    conversation = _conversation(tenant_user.company_id)
+    messages = [
+        ("INBOUND", "CUSTOMER", "RECEIVED", "Quanto custa?"),
+        ("OUTBOUND", "AGENT", "READ", "Custa R$ 50."),
+        ("OUTBOUND", "AI", "FAILED", "Confirmei seu horário."),
+        ("OUTBOUND", "AI", "QUEUED", "Quer reservar?"),
+        ("OUTBOUND", "AI", "SENDING", "Ainda em envio."),
+    ]
+    db.session.add_all(
+        Message(
+            company_id=conversation.company_id,
+            conversation_id=conversation.id,
+            direction=direction,
+            sender_type=sender_type,
+            status=status,
+            content=content,
+        )
+        for direction, sender_type, status, content in messages
+    )
+    db.session.flush()
+
+    assert ConversationOperations.groq_history(
+        conversation.company_id, conversation.id, limit=2
+    ) == [
+        {"role": "user", "content": "Quanto custa?"},
+        {"role": "assistant", "content": "Custa R$ 50."},
+    ]
+    assert ConversationOperations.recent_messages(
+        conversation.company_id, conversation.id, limit=1
+    )[0].status == "SENDING"
 
 
 def test_assume_pauses_ai_and_return_reactivates_it(

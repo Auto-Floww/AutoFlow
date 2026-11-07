@@ -34,6 +34,7 @@ class ToolContext:
     conversation_id: int | None = None
     customer_id: int | None = None
     actor_user_id: int | None = None
+    inbound_batch: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -9,8 +9,13 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models import CompanyMember, Conversation, ConversationTag, Customer, Message, Tag
 from app.models.base import utcnow
-from app.services.exceptions import AuthorizationError, ConflictError, ValidationError
+from app.services.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.services.tenancy import ensure_same_company, tenant_get
+
+
+GROQ_OUTBOUND_STATUSES = ("SENT", "DELIVERED", "READ")
+HANDOFF_CONFIRMATION = "Vou encaminhar você para um atendente humano. Por favor, aguarde um momento."
+HANDOFF_CONFIRMATION_KEY = "ai-handoff-confirmation:"
 
 
 class ConversationOperations:
@@ -228,6 +233,7 @@ class ConversationOperations:
         commit: bool = True,
     ) -> Conversation:
         conversation = tenant_get(Conversation, company_id, conversation_id, lock=True)
+        db.session.refresh(conversation, with_for_update=True)
         new_handoff = not conversation.human_requested
         conversation.ai_status = "PAUSED"
         conversation.human_requested = True
@@ -237,6 +243,7 @@ class ConversationOperations:
         memory["handoff_at"] = utcnow().isoformat()
         if new_handoff:
             memory["handoff_sequence"] = int(memory.get("handoff_sequence") or 0) + 1
+            memory.pop("handoff_confirmation_id", None)
         conversation.memory_json = memory
         if new_handoff:
             from app.services.notification_service import NotificationOperations
@@ -258,6 +265,85 @@ class ConversationOperations:
         return conversation
 
     @staticmethod
+    def transfer_from_ai(
+        company_id: int,
+        conversation_id: int,
+        *,
+        reason: str | None,
+        inbound_batch: tuple[int, ...],
+    ) -> tuple[Conversation, int | None]:
+        from app.services.outbox import EnqueueOutboxTaskService
+
+        # The processing worker also locks inbound messages before the conversation.
+        inbound_messages = []
+        if inbound_batch:
+            inbound_messages = (
+                Message.query.filter(
+                    Message.company_id == company_id,
+                    Message.conversation_id == conversation_id,
+                    Message.direction == "INBOUND",
+                    Message.id.in_(inbound_batch),
+                    Message.processing_status.in_(("PENDING", "PROCESSING")),
+                )
+                .order_by(Message.id)
+                .populate_existing()
+                .with_for_update()
+                .all()
+            )
+        conversation = Conversation.query.filter_by(
+            company_id=company_id, id=conversation_id
+        ).populate_existing().with_for_update().one_or_none()
+        if conversation is None:
+            raise NotFoundError("Conversation not found")
+        memory = conversation.memory_json or {}
+        if conversation.ai_status != "ACTIVE" or conversation.human_requested:
+            if not inbound_batch and memory.get("handoff_confirmation_id"):
+                db.session.commit()
+                return conversation, None
+            raise ConflictError("AI is paused for this conversation")
+        if inbound_batch and (
+            memory.get("processing_message_id") != inbound_batch[0]
+            or all(message.id != inbound_batch[0] for message in inbound_messages)
+        ):
+            raise ConflictError("The AI no longer owns this inbound message")
+
+        ConversationOperations.transfer_to_human(
+            company_id, conversation_id, reason=reason, commit=False
+        )
+        outbox_id = None
+        if conversation.channel == "WHATSAPP":
+            sequence = conversation.memory_json["handoff_sequence"]
+            outbound = ConversationOperations.record_outbound(
+                company_id,
+                conversation_id=conversation.id,
+                content=HANDOFF_CONFIRMATION,
+                reply_to_id=max(inbound_batch, default=None),
+                idempotency_key=f"{HANDOFF_CONFIRMATION_KEY}{conversation.id}:{sequence}",
+                commit=False,
+            )
+            outbox_id = EnqueueOutboxTaskService().execute(
+                "send_whatsapp_message",
+                {"message_id": outbound.id},
+                idempotency_key=f"send-whatsapp-message:{outbound.id}",
+                company_id=company_id,
+            ).id
+            memory = dict(conversation.memory_json or {})
+            memory["handoff_confirmation_id"] = outbound.id
+            conversation.memory_json = memory
+        processed_at = utcnow()
+        for message in inbound_messages:
+            message.processing_status = "PROCESSED"
+            message.processed_at = processed_at
+            message.error_message = None
+        if inbound_batch:
+            memory = dict(conversation.memory_json or {})
+            memory.pop("processing_message_id", None)
+            memory.pop("processing_started_at", None)
+            conversation.memory_json = memory
+        db.session.commit()
+        return conversation, outbox_id
+
+    @staticmethod
     def return_to_ai(
         company_id: int,
         conversation_id: int,
@@ -266,12 +352,17 @@ class ConversationOperations:
         commit: bool = True,
     ) -> Conversation:
         conversation = tenant_get(Conversation, company_id, conversation_id, lock=True)
+        db.session.refresh(conversation, with_for_update=True)
         if user_id and conversation.assigned_user_id not in {None, user_id}:
             raise AuthorizationError("Only the assigned agent can return this conversation")
         conversation.assigned_user_id = None
         conversation.human_requested = False
         conversation.ai_status = "ACTIVE"
         conversation.status = "OPEN"
+        if (conversation.memory_json or {}).get("handoff_confirmation_id"):
+            memory = dict(conversation.memory_json)
+            memory.pop("handoff_confirmation_id")
+            conversation.memory_json = memory
         if commit:
             db.session.commit()
         return conversation
@@ -293,6 +384,7 @@ class ConversationOperations:
         *,
         limit: int = 30,
         through_message_id: int | None = None,
+        for_groq: bool = False,
     ) -> list[Message]:
         conversation = tenant_get(Conversation, company_id, conversation_id)
         query = Message.query.filter_by(
@@ -300,6 +392,18 @@ class ConversationOperations:
         )
         if through_message_id is not None:
             query = query.filter(Message.id <= int(through_message_id))
+        if for_groq:
+            query = query.filter(
+                Message.content != "",
+                db.or_(
+                    Message.direction == "INBOUND",
+                    db.and_(
+                        Message.direction == "OUTBOUND",
+                        Message.sender_type.in_(("AI", "AGENT")),
+                        Message.status.in_(GROQ_OUTBOUND_STATUSES),
+                    ),
+                ),
+            )
         rows = query.order_by(Message.created_at.desc(), Message.id.desc()).limit(
             min(max(int(limit), 1), 100)
         ).all()
@@ -319,6 +423,7 @@ class ConversationOperations:
                 conversation_id,
                 limit=limit,
                 through_message_id=through_message_id,
+                for_groq=True,
             )
         )
 
@@ -330,7 +435,11 @@ class ConversationOperations:
                 continue
             if message.direction == "INBOUND":
                 role = "user"
-            elif message.sender_type in {"AI", "AGENT"}:
+            elif (
+                message.direction == "OUTBOUND"
+                and message.sender_type in {"AI", "AGENT"}
+                and message.status in GROQ_OUTBOUND_STATUSES
+            ):
                 role = "assistant"
             else:
                 continue
@@ -346,6 +455,25 @@ class ConversationOperations:
         through_message_id: int | None = None,
         limit: int = 100,
     ) -> list[dict[str, str]]:
+        return ConversationOperations.format_groq_history(
+            ConversationOperations.summary_message_range(
+                company_id,
+                conversation_id,
+                after_message_id=after_message_id,
+                through_message_id=through_message_id,
+                limit=limit,
+            )
+        )
+
+    @staticmethod
+    def summary_message_range(
+        company_id: int,
+        conversation_id: int,
+        *,
+        after_message_id: int = 0,
+        through_message_id: int | None = None,
+        limit: int = 100,
+    ) -> list[Message]:
         tenant_get(Conversation, company_id, conversation_id)
         query = Message.query.filter(
             Message.company_id == int(company_id),
@@ -354,8 +482,7 @@ class ConversationOperations:
         )
         if through_message_id is not None:
             query = query.filter(Message.id <= int(through_message_id))
-        rows = query.order_by(Message.id).limit(min(max(int(limit), 1), 200)).all()
-        return ConversationOperations.format_groq_history(rows)
+        return query.order_by(Message.id).limit(min(max(int(limit), 1), 200)).all()
 
     @staticmethod
     def set_summary(
@@ -364,11 +491,17 @@ class ConversationOperations:
         *,
         summary: str,
         summarized_through_message_id: int | None = None,
+        expected_cursor: int | None = None,
         commit: bool = True,
     ) -> Conversation:
         conversation = tenant_get(Conversation, company_id, conversation_id, lock=True)
+        if expected_cursor is not None:
+            # The identity map may still contain the snapshot used by Groq.
+            db.session.refresh(conversation, with_for_update=True)
         memory = dict(conversation.memory_json or {})
         previous_cursor = int(memory.get("summarized_through_message_id") or 0)
+        if expected_cursor is not None and previous_cursor != expected_cursor:
+            raise ConflictError("Conversation summary cursor changed")
         cursor = int(summarized_through_message_id or 0)
         if cursor and cursor < previous_cursor:
             return conversation
