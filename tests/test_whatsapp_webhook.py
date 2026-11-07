@@ -114,17 +114,20 @@ def test_valid_message_is_stored_once_and_enqueued_once(
     app.config["EVOLUTION_API_KEY"] = "test-evolution-key"
 
     payload = _evolution_payload("loja-principal")
+    payload["apikey"] = None
     raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
 
     first = client.post(
         "/webhooks/evolution",
         data=raw,
         content_type="application/json",
+        headers={"apikey": "test-evolution-key"},
     )
     repeated = client.post(
         "/webhooks/evolution",
         data=raw,
         content_type="application/json",
+        headers={"apikey": "test-evolution-key"},
     )
 
     assert first.status_code == repeated.status_code == 200

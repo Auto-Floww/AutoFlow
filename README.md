@@ -196,9 +196,17 @@ Configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e
 
 1. abra **Configurações → WhatsApp**;
 2. salve um nome exclusivo para a instância;
-3. gere o QR Code — se necessário, o AutoFlow cria a instância Evolution;
-4. leia o QR Code pelo celular;
-5. configure o callback `/webhooks/evolution` e habilite `MESSAGES_UPSERT`.
+3. gere ou atualize o QR Code. O AutoFlow cria a instância Evolution se necessário
+   e registra a URL configurada com os eventos `MESSAGES_UPSERT` e `CONNECTION_UPDATE`;
+4. leia o QR Code pelo celular se a instância ainda não estiver conectada.
+
+Para uma instância já conectada, **Atualizar QR Code** também verifica e corrige
+o callback. A Evolution mantém um único callback por instância. Se
+`EVOLUTION_WEBHOOK_URL` estiver vazio, configure o callback manualmente na
+Evolution. Quando `EVOLUTION_API_URL` passa por um proxy com lista de rotas
+permitidas, o proxy deve encaminhar `GET /webhook/find/{instance}` e
+`POST /webhook/set/{instance}` preservando o cabeçalho `apikey`. A URL do
+callback precisa ser acessível a partir do servidor da Evolution.
 
 O endpoint persiste/idempotentiza o evento e enfileira o processamento. As
 cotas por empresa e remetente são verificadas transacionalmente antes de criar

@@ -15,6 +15,11 @@ from app.services.whatsapp.generate_whatsapp_qrcode_service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def disable_external_webhook_by_default(app, monkeypatch):
+    monkeypatch.setitem(app.config, "EVOLUTION_WEBHOOK_URL", "")
+
+
 def _integration(company_id: int, instance_name: str = "loja-qrcode"):
     integration = WhatsAppIntegration(
         company_id=company_id,
@@ -106,6 +111,7 @@ def test_service_creates_missing_instance_before_returning_qrcode(
 ):
     company = company_factory()
     _integration(company.id, "loja-nova")
+    monkeypatch.setitem(app.config, "EVOLUTION_WEBHOOK_URL", "http://web:5000/webhooks/evolution")
     encoded = base64.b64encode(b"\x89PNG\r\n\x1a\nqr-data").decode()
     evolution_service = WhatsAppService(api_url="http://evolution", api_key="test-key")
     calls = []
@@ -118,13 +124,84 @@ def test_service_creates_missing_instance_before_returning_qrcode(
         calls.append(("create", instance_name))
         return {"qrcode": {"base64": encoded}}
 
+    def ensure_webhook(instance_name):
+        calls.append(("webhook", instance_name))
+
     monkeypatch.setattr(evolution_service, "request_qr_code", missing_instance)
     monkeypatch.setattr(evolution_service, "create_instance", create_instance)
+    monkeypatch.setattr(evolution_service, "ensure_webhook", ensure_webhook)
 
     result = GenerateWhatsAppQrCodeService(evolution_service).execute(company.id)
 
     assert result["qr_code"] == f"data:image/png;base64,{encoded}"
-    assert calls == [("connect", "loja-nova"), ("create", "loja-nova")]
+    assert calls == [
+        ("connect", "loja-nova"),
+        ("create", "loja-nova"),
+        ("webhook", "loja-nova"),
+    ]
+
+
+def test_qrcode_registers_missing_webhook_for_connected_instance(
+    client, app, tenant_user, login_as, monkeypatch
+):
+    _integration(tenant_user.company_id)
+    login_as(tenant_user)
+    callback_url = "http://web:5000/webhooks/evolution"
+    monkeypatch.setitem(app.config, "EVOLUTION_WEBHOOK_URL", callback_url)
+    monkeypatch.setitem(app.config, "EVOLUTION_API_KEY", "test-key")
+    calls = []
+
+    def fake_request(_gateway, method, path, payload=None):
+        calls.append((method, path, payload))
+        if path.startswith("instance/connectionState/"):
+            return {"instance": {"state": "open"}}
+        if path.startswith("webhook/find/"):
+            return None
+        return {}
+
+    monkeypatch.setattr(WhatsAppService, "_request", fake_request)
+
+    response = client.post("/settings/whatsapp/qrcode", json={})
+
+    assert response.status_code == 200
+    assert response.get_json()["data"]["connected"] is True
+    assert calls == [
+        ("GET", "instance/connect/loja-qrcode", None),
+        ("GET", "webhook/find/loja-qrcode", None),
+        (
+            "POST",
+            "webhook/set/loja-qrcode",
+            {"webhook": {
+                "enabled": True,
+                "url": callback_url,
+                "byEvents": False,
+                "base64": False,
+                "events": ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+                "headers": {"apikey": "test-key"},
+            }},
+        ),
+        ("GET", "instance/connectionState/loja-qrcode", None),
+    ]
+
+
+def test_correct_webhook_is_not_rewritten(app, monkeypatch):
+    callback_url = "http://web:5000/webhooks/evolution"
+    monkeypatch.setitem(app.config, "EVOLUTION_WEBHOOK_URL", callback_url)
+    gateway = WhatsAppService(api_url="http://evolution", api_key="test-key")
+
+    def fake_request(method, path, payload=None):
+        assert (method, path) == ("GET", "webhook/find/loja-qrcode")
+        return {
+            "enabled": True,
+            "url": callback_url,
+            "webhookByEvents": False,
+            "headers": {"apikey": "instance-token"},
+            "events": ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "CONTACTS_UPSERT"],
+        }
+
+    monkeypatch.setattr(gateway, "_request", fake_request)
+
+    gateway.ensure_webhook("loja-qrcode")
 
 
 def test_service_does_not_create_instance_for_non_404_error(

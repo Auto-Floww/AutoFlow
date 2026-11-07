@@ -23,7 +23,7 @@ def evolution_webhook():
         return jsonify(error="invalid_payload"), 400
 
     service = WhatsAppGateway()
-    if not service.verify_webhook(data):
+    if not service.verify_webhook(data, header_api_key=request.headers.get("apikey")):
         current_app.logger.warning("Webhook Evolution com chave invalida")
         return jsonify(error="invalid_api_key"), 401
 

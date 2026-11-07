@@ -30,6 +30,7 @@ class GenerateWhatsAppQrCodeService:
             # existir na Evolution. Provisione-a no primeiro pedido de QR Code
             # para que esse estado esperado nao seja exposto como um 502.
             result = self.evolution_service.create_instance(integration.instance_name)
+        self.evolution_service.ensure_webhook(integration.instance_name)
         qrcode = result.get("qrcode") if isinstance(result.get("qrcode"), dict) else {}
         value = result.get("base64") or qrcode.get("base64")
         pairing_code = result.get("pairingCode") or qrcode.get("pairingCode")

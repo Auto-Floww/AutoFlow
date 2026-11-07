@@ -56,7 +56,9 @@ class WhatsAppGateway:
             )
         return instance_name
 
-    def verify_webhook(self, payload: dict[str, Any]) -> bool:
+    def verify_webhook(
+        self, payload: dict[str, Any], *, header_api_key: str | None = None
+    ) -> bool:
         """Accept Evolution's global key or the token of the emitting instance.
 
         Evolution v2 emits the per-instance token in ``apikey`` even when REST
@@ -64,7 +66,7 @@ class WhatsAppGateway:
         token against the named instance instead of weakening webhook auth.
         """
 
-        supplied = str(payload.get("apikey") or "")
+        supplied = str(header_api_key or payload.get("apikey") or "")
         if not supplied:
             return False
         if self.api_key and hmac.compare_digest(supplied, self.api_key):
@@ -383,6 +385,38 @@ class WhatsAppGateway:
                 "qrcode": True,
             },
         )
+
+    def ensure_webhook(self, instance_name: str) -> None:
+        """Register the configured AutoFlow callback when it needs updating."""
+
+        url = str(_setting("EVOLUTION_WEBHOOK_URL", "") or "").strip()
+        if not url:
+            return
+
+        instance_path = urllib.parse.quote(instance_name, safe="")
+        webhook = self._request("GET", f"webhook/find/{instance_path}") or {}
+        required_events = ["MESSAGES_UPSERT", "CONNECTION_UPDATE"]
+        same_callback = webhook.get("url") == url
+        current_events = (webhook.get("events") or []) if same_callback else []
+        current_headers = (webhook.get("headers") or {}) if same_callback else {}
+        if (
+            same_callback
+            and webhook.get("enabled")
+            and not webhook.get("webhookByEvents")
+            and all(event in current_events for event in required_events)
+            and current_headers.get("apikey")
+        ):
+            return
+
+        settings = {
+            "enabled": True,
+            "url": url,
+            "byEvents": False,
+            "base64": bool(same_callback and webhook.get("webhookBase64")),
+            "events": list(dict.fromkeys([*current_events, *required_events])),
+        }
+        settings["headers"] = {"apikey": self.api_key, **current_headers}
+        self._request("POST", f"webhook/set/{instance_path}", {"webhook": settings})
 
     def get_instance_state(self, instance_name: str) -> str:
         """Return the normalized connection state from Evolution."""
